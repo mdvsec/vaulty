@@ -1,6 +1,6 @@
 #include <string>
 
-#include "include/secure_buffer.hpp"
+#include <secure_buffer.hpp>
 
 static constexpr size_t SECURE_MEM_POOL_SIZE = 32768;
 static constexpr size_t SECURE_MEM_MIN_BLOCK = 32;
