@@ -18,9 +18,8 @@ public:
         }
     }
 
-    SecureBuffer(const char* data, size_t size)
-        : SecureBuffer(size) {
-        std::memcpy(data_, data, size);
+    ~SecureBuffer() {
+        release();
     }
 
     SecureBuffer(const SecureBuffer&) = delete;
@@ -40,8 +39,20 @@ public:
         return *this;
     }
 
-    ~SecureBuffer() {
-        release();
+    unsigned char& operator[](size_t i) {
+        if (i >= size_) {
+            throw std::runtime_error("Index out of bounds");
+        }
+
+        return data_[i];
+    }
+
+    const unsigned char& operator[](size_t i) const {
+        if (i >= size_) {
+            throw std::runtime_error("Index out of bounds");
+        }
+
+        return data_[i];
     }
 
     bool operator==(const SecureBuffer& other) const {
@@ -56,6 +67,25 @@ public:
         return !(*this == other);
     }
 
+    unsigned char* data() const {
+        return data_;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+    void resize(size_t new_size) {
+        if (new_size > size_) {
+            throw std::invalid_argument("Resize to larger size is not supported");
+        }
+
+        if (new_size < size_) {
+            OPENSSL_cleanse(data_ + new_size, size_ - new_size);
+            size_ = new_size;
+        }
+    }
+
 private:
     unsigned char* data_;
     size_t size_;
@@ -67,5 +97,10 @@ private:
         }
     }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const SecureBuffer& buffer) {
+    os.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+    return os;
+}
 
 } /* namespace vaulty */

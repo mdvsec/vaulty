@@ -1,10 +1,11 @@
-#include <string>
+#include <iostream>
 
 #include <secure_buffer.hpp>
+#include <cli.hpp>
 
 int main() {
-    std::string str = "superpassword";
-    vaulty::SecureBuffer buffer(str.c_str(), str.size());
+    vaulty::SecureBuffer password = vaulty::cli::readMasterPassword();
+    std::cout << "Your password is: " << password << std::endl;
 
     return 0;
 }
