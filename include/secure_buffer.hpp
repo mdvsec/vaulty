@@ -2,6 +2,8 @@
 
 #include <sys/mman.h>
 #include <openssl/crypto.h>
+#include <utility>
+#include <ostream>
 
 #include <secure_memory_manager.hpp>
 
@@ -9,7 +11,10 @@ namespace vaulty {
 
 class SecureBuffer {
 public:
-    explicit SecureBuffer(size_t size)
+    static constexpr size_t kMaxPasswordLength = 128;
+
+public:
+    explicit SecureBuffer(size_t size = kMaxPasswordLength)
         : data_(nullptr), size_(size) {
         SecureMemoryManager::ensureInitialized();
         data_ = static_cast<unsigned char*>(OPENSSL_secure_zalloc(size_));

@@ -22,10 +22,10 @@ public:
 
 private:
     SecureMemoryManager() {
-        constexpr size_t SECURE_MEM_POOL_SIZE = 32768;
-        constexpr size_t SECURE_MEM_MIN_BLOCK = 32;
+        constexpr size_t kSecureMemPoolSize = 32768;
+        constexpr size_t kSecureMemMinBlock = 32;
 
-        if (!CRYPTO_secure_malloc_init(SECURE_MEM_POOL_SIZE, SECURE_MEM_MIN_BLOCK)) {
+        if (!CRYPTO_secure_malloc_init(kSecureMemPoolSize, kSecureMemMinBlock)) {
             throw std::runtime_error("Failed to initialize OpenSSL secure memory");
         }
     }
