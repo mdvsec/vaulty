@@ -7,6 +7,7 @@
 #include <CLI/CLI.hpp>
 
 #include <secure_buffer.hpp>
+#include <database.hpp>
 
 namespace vaulty::cli {
 
@@ -94,6 +95,8 @@ int run(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     if (add->parsed()) {
+        Database db;
+
         username = readSensitiveInput("Enter username: ", false);
         password = readSensitiveInput("Enter password: ");
 

@@ -18,7 +18,7 @@ public:
     };
 
 public:
-    explicit Database(std::string_view path);
+    explicit Database(std::string_view path = kDefaultPath);
 
     Database(const Database&) = delete;
     Database& operator=(const Database&) = delete;
@@ -35,6 +35,8 @@ public:
     bool remove(const std::string& domain, const std::string& username);
 
 private:
+    static constexpr std::string_view kDefaultPath = "password.db";
+
     class Impl;
     std::unique_ptr<Impl> impl_;
 };

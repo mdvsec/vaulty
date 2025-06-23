@@ -18,6 +18,10 @@ find_package(OpenSSL REQUIRED)
 target_include_directories(vaulty PRIVATE ${OPENSSL_INCLUDE_DIR})
 target_link_libraries(vaulty PRIVATE OpenSSL::Crypto)
 
+# SQLite3
+find_package(SQLite3 REQUIRED)
+target_link_libraries(vaulty PRIVATE SQLite::SQLite3)
+
 # CLI11
 include(FetchContent)
 FetchContent_Declare(
