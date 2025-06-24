@@ -47,6 +47,9 @@ int handleAdd(const std::string& domain) {
     SecureBuffer key = crypto::deriveEncryptionKey(password, db.getSalt());
     std::cout << "Derived key: " << std::hex << key << std::endl;
 
+    SecureBuffer ciphertext = crypto::encrypt(key, password);
+    std::cout << "Encrypted password: " << std::hex << ciphertext << std::endl;
+
     return 0;
 }
 

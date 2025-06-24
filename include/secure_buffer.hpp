@@ -4,6 +4,8 @@
 #include <openssl/crypto.h>
 #include <utility>
 #include <ostream>
+#include <iomanip>
+#include <ios>
 
 #include <secure_memory_manager.hpp>
 
@@ -21,6 +23,12 @@ public:
         if (!data_) {
             throw std::runtime_error("Failed to allocate secure memory");
         }
+    }
+
+    SecureBuffer(const SecureBuffer& a, const SecureBuffer& b)
+        : SecureBuffer(a.size() + b.size()) {
+        std::memcpy(data_, a.data(), a.size());
+        std::memcpy(data_ + a.size(), b.data(), b.size());
     }
 
     ~SecureBuffer() {
@@ -72,6 +80,10 @@ public:
         return !(*this == other);
     }
 
+    SecureBuffer operator+(const SecureBuffer& rhs) {
+        return SecureBuffer(*this, rhs);
+    }
+
     unsigned char* data() const {
         return data_;
     }
@@ -104,7 +116,19 @@ private:
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SecureBuffer& buffer) {
-    os.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+    if ((os.flags() & std::ios_base::basefield) == std::ios_base::hex) {
+        std::ios_base::fmtflags f(os.flags());
+        os << std::hex << std::setfill('0');
+
+        for (size_t i = 0; i < buffer.size(); ++i) {
+            os << std::setw(2) << static_cast<int>(buffer[i]);
+        }
+
+        os.flags(f);
+    } else {
+        os.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+    }
+
     return os;
 }
 

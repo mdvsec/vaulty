@@ -8,8 +8,11 @@ namespace vaulty::crypto {
 
 static constexpr size_t kSaltSize = 64;
 static constexpr size_t kKeySize = 32;
+static constexpr size_t kIvSize = 12;
+static constexpr size_t kTagSize = 16;
 static constexpr size_t kIterationsCount = 210000;
 
 SecureBuffer deriveEncryptionKey(const SecureBuffer& masterPassword, const std::array<unsigned char, kSaltSize>& salt);
+SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext);
 
 } /* namespace vaulty::crypto */
