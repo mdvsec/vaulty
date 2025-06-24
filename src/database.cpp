@@ -4,18 +4,14 @@
 #include <openssl/rand.h>
 
 #include <database.hpp>
+#include <crypto.hpp>
 
 namespace vaulty {
-
-Database::Database(std::string_view path)
-    : impl_(std::make_unique<Impl>(path)) {}
-
-Database::~Database() = default;
 
 class Database::Impl {
 public:
     Impl(std::string_view path)
-        : db_(nullptr) {
+        : db_(nullptr), kdf_salt_{} {
         bool db_existed = std::filesystem::exists(path);
 
         if (sqlite3_open_v2(path.data(), &db_,
@@ -41,11 +37,13 @@ public:
         }
     }
 
-private:
-    static constexpr size_t kSaltSize = 64;
-    static constexpr size_t kIterationsCount = 210000;
+    const std::array<unsigned char, crypto::kSaltSize>& getSalt() const {
+        return kdf_salt_;
+    }
 
+private:
     sqlite3* db_;
+    std::array<unsigned char, crypto::kSaltSize> kdf_salt_;
 
 private:
     void applySecurityPragmas();
@@ -53,6 +51,15 @@ private:
     void initSecurityParameters();
     void verifyDatabaseIntegrity();
 };
+
+Database::Database(std::string_view path)
+    : impl_(std::make_unique<Impl>(path)) {}
+
+Database::~Database() = default;
+
+const std::array<unsigned char, crypto::kSaltSize>& Database::getSalt() const {
+    return impl_->getSalt();
+}
 
 void Database::Impl::applySecurityPragmas() {
     auto executePragma = [&](const std::string& name, const std::string& value) {
@@ -91,8 +98,7 @@ void Database::Impl::createTables() {
 }
 
 void Database::Impl::initSecurityParameters() {
-    std::array<unsigned char, kSaltSize> salt;
-    if (RAND_bytes(salt.data(), salt.size()) != 1) {
+    if (RAND_bytes(kdf_salt_.data(), kdf_salt_.size()) != 1) {
         throw std::runtime_error("Failed to generate salt");
     }
 
@@ -103,11 +109,11 @@ void Database::Impl::initSecurityParameters() {
         throw std::runtime_error("Failed to prepare statement");
     }
 
-    if (sqlite3_bind_blob(stmt, 1, salt.data(),
-                          static_cast<int>(salt.size()),
+    if (sqlite3_bind_blob(stmt, 1, kdf_salt_.data(),
+                          static_cast<int>(kdf_salt_.size()),
                           SQLITE_STATIC) != SQLITE_OK ||
         sqlite3_bind_int(stmt, 2,
-                         kIterationsCount) != SQLITE_OK) {
+                         static_cast<int>(crypto::kIterationsCount)) != SQLITE_OK) {
         throw std::runtime_error("Failed to bind statement parameters");
     }
 
@@ -159,12 +165,14 @@ void Database::Impl::verifyDatabaseIntegrity() {
     int salt_size = sqlite3_column_bytes(stmt, 0);
     int iterations = sqlite3_column_int(stmt, 1);
 
-    if (!salt_blob || salt_size != kSaltSize) {
+    if (!salt_blob || salt_size != static_cast<int>(crypto::kSaltSize)) {
         sqlite3_finalize(stmt);
         throw std::runtime_error("Invalid salt in KDF parameters");
     }
 
-    if (iterations < kIterationsCount) {
+    std::memcpy(kdf_salt_.data(), salt_blob, crypto::kSaltSize);
+
+    if (iterations < static_cast<int>(crypto::kIterationsCount)) {
         sqlite3_finalize(stmt);
         throw std::runtime_error("Iterations count too low in KDF parameters");
     }

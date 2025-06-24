@@ -3,9 +3,11 @@
 #include <sqlite3.h>
 #include <memory>
 #include <string>
+#include <array>
 #include <string_view>
 
 #include <secure_buffer.hpp>
+#include <crypto.hpp>
 
 namespace vaulty {
 
@@ -26,6 +28,8 @@ public:
     Database& operator=(Database&&) = delete;
 
     ~Database();
+
+    const std::array<unsigned char, crypto::kSaltSize>& getSalt() const;
 
     void lock();
     bool unlock(const SecureBuffer& master_key);
