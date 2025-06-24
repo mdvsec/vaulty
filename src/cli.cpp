@@ -1,0 +1,55 @@
+#include <CLI/CLI.hpp>
+#include <string>
+#include <stdexcept>
+
+#include <cli.hpp>
+#include <interface.hpp>
+
+namespace vaulty::cli {
+
+int run(int argc, char** argv) {
+    int ret = 0;
+
+    try {
+        std::string domain;
+        std::string username_raw;
+
+        CLI::App app("vaulty -- CLI password manager", "vaulty");
+        app.set_version_flag("--version", "vaulty 0.1");
+
+        auto add = app.add_subcommand("add", "Add a new credential");
+        add->add_option("--domain", domain)->required();
+
+        auto get = app.add_subcommand("get", "Get credentials by domain");
+        get->add_option("--domain", domain)->required();
+        get->add_option("--username", username_raw);
+
+        auto list = app.add_subcommand("list", "List stored credentials");
+        list->add_option("--domain", domain);
+
+        auto remove = app.add_subcommand("remove", "Remove a credential");
+        remove->add_option("--domain", domain)->required();
+        remove->add_option("--username", username_raw);
+
+        CLI11_PARSE(app, argc, argv);
+
+        if (add->parsed()) {
+            ret = handleAdd(domain);
+        } else if (get->parsed()) {
+            ret = handleGet(domain, username_raw);
+        } else if (list->parsed()) {
+            ret = handleList(domain);
+        } else if (remove->parsed()) {
+            ret = handleRemove(domain, username_raw);
+        } else {
+            std::cout << app.help() << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        ret = 1;
+    }
+
+    return ret;
+}
+
+} /* namespace vaulty::cli */

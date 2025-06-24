@@ -35,7 +35,7 @@ public:
     bool remove(const std::string& domain, const std::string& username);
 
 private:
-    static constexpr std::string_view kDefaultPath = "password.db";
+    static constexpr std::string_view kDefaultPath = "passwords.db";
 
     class Impl;
     std::unique_ptr<Impl> impl_;
