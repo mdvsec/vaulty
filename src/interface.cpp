@@ -50,23 +50,19 @@ int handleAdd(const std::string& domain) {
     Database db;
 
     SecureBuffer master_password = readMasterPassword();
+    SecureBuffer key = crypto::deriveEncryptionKey(master_password, db.getSalt());
 
     SecureBuffer username = readSensitiveInput("Create new username: ", false);
     SecureBuffer password = readSensitiveInput("Create new password: ");
 
-    std::cout << std::endl;
+    Database::Entry entry = {domain, std::move(username), std::move(password)}; /* No designated initializers in C++17 :( */
 
-    std::cout << "Username: " << username << std::endl;
-    std::cout << "Password: " << password << std::endl;
+    if (!db.store(key, entry)) {
+        std::cerr << "Error occurred while adding entry for domain: " << domain << std::endl;
+        return 1;
+    }
 
-    SecureBuffer key = crypto::deriveEncryptionKey(master_password, db.getSalt());
-    std::cout << "Derived key: " << std::hex << key << std::endl;
-
-    SecureBuffer ciphertext = crypto::encrypt(key, password);
-    std::cout << "Encrypted password: " << std::hex << ciphertext << std::endl;
-
-    SecureBuffer plaintext = crypto::decrypt(key, ciphertext);
-    std::cout << "Decrypted password: " << std::dec << plaintext << std::endl;
+    std::cout << "Added entry for domain: " << domain << std::endl;
 
     return 0;
 }

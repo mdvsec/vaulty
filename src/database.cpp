@@ -41,6 +41,8 @@ public:
         return kdf_salt_;
     }
 
+    bool store(const SecureBuffer& key, const Entry& entry);
+
 private:
     sqlite3* db_;
     std::array<unsigned char, crypto::kSaltSize> kdf_salt_;
@@ -59,6 +61,33 @@ Database::~Database() = default;
 
 const std::array<unsigned char, crypto::kSaltSize>& Database::getSalt() const {
     return impl_->getSalt();
+}
+
+bool Database::store(const SecureBuffer& key, const Entry& entry) {
+    return impl_->store(key, entry);
+}
+
+bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
+    SecureBuffer encrypted_username = crypto::encrypt(key, entry.username);
+    SecureBuffer encrypted_password = crypto::encrypt(key, entry.password);
+
+    const char* sql = "INSERT OR REPLACE INTO passwords (domain, username, password) VALUES (?, ?, ?)";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    if (sqlite3_bind_text(stmt, 1, entry.domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
+        sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK ||
+        sqlite3_bind_blob(stmt, 3, encrypted_password.data(), static_cast<int>(encrypted_password.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+        return false;
+    }
+
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+
+    return success;
 }
 
 void Database::Impl::applySecurityPragmas() {

@@ -31,10 +31,7 @@ public:
 
     const std::array<unsigned char, crypto::kSaltSize>& getSalt() const;
 
-    void lock();
-    bool unlock(const SecureBuffer& master_key);
-
-    bool store(const Entry& entry);
+    bool store(const SecureBuffer& key, const Entry& entry);
     Entry fetch(const std::string& domain, const std::string& username);
     bool remove(const std::string& domain, const std::string& username);
 
