@@ -14,5 +14,6 @@ static constexpr size_t kIterationsCount = 210000;
 
 SecureBuffer deriveEncryptionKey(const SecureBuffer& masterPassword, const std::array<unsigned char, kSaltSize>& salt);
 SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext);
+SecureBuffer decrypt(const SecureBuffer& key, const SecureBuffer& blob);
 
 } /* namespace vaulty::crypto */

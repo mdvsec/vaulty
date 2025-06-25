@@ -50,6 +50,9 @@ int handleAdd(const std::string& domain) {
     SecureBuffer ciphertext = crypto::encrypt(key, password);
     std::cout << "Encrypted password: " << std::hex << ciphertext << std::endl;
 
+    SecureBuffer plaintext = crypto::decrypt(key, ciphertext);
+    std::cout << "Decrypted password: " << std::dec << plaintext << std::endl;
+
     return 0;
 }
 

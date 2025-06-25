@@ -74,4 +74,52 @@ SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext) {
     return iv + ciphertext + tag;
 }
 
+SecureBuffer decrypt(const SecureBuffer& key, const SecureBuffer& blob) {
+    int ciphertext_len = blob.size() - kIvSize - kTagSize;
+    int len = 0;
+    int plaintext_len = 0;
+
+    SecureBuffer iv(blob.data(), kIvSize);
+    SecureBuffer ciphertext(blob.data() + kIvSize, ciphertext_len);
+    SecureBuffer tag(blob.data() + blob.size() - kTagSize, kTagSize);
+    SecureBuffer plaintext(ciphertext.size());
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        throw std::runtime_error("EVP_CIPHER_CTX_new failed");
+    }
+
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1 ||
+        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kIvSize), nullptr) != 1 ||
+        EVP_DecryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("EVP_DecryptInit_ex failed");
+    }
+
+    if (EVP_DecryptUpdate(ctx, plaintext.data(), &len, ciphertext.data(), static_cast<int>(ciphertext.size())) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("EVP_DecryptUpdate failed");
+    }
+    plaintext_len = len;
+
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, static_cast<int>(kTagSize), tag.data()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("EVP_CIPHER_CTX_ctrl SET_TAG failed");
+    }
+
+    if (EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Decryption failed: wrong master key or corrupted data");
+    }
+    plaintext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    if (plaintext_len != static_cast<int>(plaintext.size())) {
+        plaintext.resize(plaintext_len);
+    }
+
+    return plaintext;
+}
+
 } /* namespace vaulty::crypto */
