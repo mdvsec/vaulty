@@ -68,6 +68,25 @@ int handleAdd(const std::string& domain) {
 }
 
 int handleGet(const std::string& domain, const std::string& username_raw) {
+    Database db;
+
+    SecureBuffer master_password = readMasterPassword();
+    SecureBuffer key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+
+    if (username_raw.empty()) {
+        SecureBuffer username = readSensitiveInput("Enter your username: ", false);
+        SecureBuffer password;
+
+        if (!db.fetch(key, domain, username, password)) {
+            std::cerr << "Error occurred while fetching entry for domain: " << domain << std::endl;
+            return 1;
+        }
+
+        std::cout << "Password for " << username << " on " << domain << " is: " << password << std::endl;
+    } else {
+        std::cout << "NOT IMPLEMENTED YET" << std::endl;
+    }
+
     return 0;
 }
 

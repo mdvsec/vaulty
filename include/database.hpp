@@ -32,7 +32,7 @@ public:
     const std::array<unsigned char, crypto::kSaltSize>& getSalt() const;
 
     bool store(const SecureBuffer& key, const Entry& entry);
-    Entry fetch(const std::string& domain, const std::string& username);
+    bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
     bool remove(const std::string& domain, const std::string& username);
 
 private:

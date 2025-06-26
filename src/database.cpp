@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <array>
+#include <vector>
 #include <openssl/rand.h>
 
 #include <database.hpp>
@@ -42,6 +43,7 @@ public:
     }
 
     bool store(const SecureBuffer& key, const Entry& entry);
+    bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
 
 private:
     sqlite3* db_;
@@ -52,6 +54,7 @@ private:
     void createTables();
     void initSecurityParameters();
     void verifyDatabaseIntegrity();
+    std::vector<std::pair<SecureBuffer, SecureBuffer>> fetchAllByDomain(const std::string& domain);
 };
 
 Database::Database(std::string_view path)
@@ -65,6 +68,10 @@ const std::array<unsigned char, crypto::kSaltSize>& Database::getSalt() const {
 
 bool Database::store(const SecureBuffer& key, const Entry& entry) {
     return impl_->store(key, entry);
+}
+
+bool Database::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
+    return impl_->fetch(key, domain, username, password_out);
 }
 
 bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
@@ -88,6 +95,67 @@ bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
     sqlite3_finalize(stmt);
 
     return success;
+}
+
+bool Database::Impl::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
+    auto entries = fetchAllByDomain(domain);
+
+    for (const auto& [encrypted_username, encrypted_password] : entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, encrypted_username);
+        if (decrypted_username == username) {
+            password_out = crypto::decrypt(key, encrypted_password);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDomain(const std::string& domain) {
+    const char* sql = "SELECT username, password FROM passwords WHERE domain = ?";
+
+    sqlite3_stmt* stmt;
+
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        throw std::runtime_error("Failed to prepare statement: " + std::string(sqlite3_errmsg(db_)));
+    }
+
+    if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_STATIC) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
+        throw std::runtime_error("Failed to bind domain parameter");
+    }
+
+    std::vector<std::pair<SecureBuffer, SecureBuffer>> results;
+    bool done = false;
+    while (!done) {
+        int ret = sqlite3_step(stmt);
+        switch (ret) {
+            case SQLITE_ROW: {
+                const void* username_blob = sqlite3_column_blob(stmt, 0);
+                int username_size = sqlite3_column_bytes(stmt, 0);
+
+                const void* password_blob = sqlite3_column_blob(stmt, 1);
+                int password_size = sqlite3_column_bytes(stmt, 1);
+
+                SecureBuffer encrypted_username(reinterpret_cast<const unsigned char*>(username_blob), username_size);
+                SecureBuffer encrypted_password(reinterpret_cast<const unsigned char*>(password_blob), password_size);
+
+                results.emplace_back(std::move(encrypted_username), std::move(encrypted_password));
+                break;
+            }
+            case SQLITE_DONE: {
+                done = true;
+                break;
+            }
+            default: {
+                sqlite3_finalize(stmt);
+                throw std::runtime_error("Error executing query");
+            }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return results;
 }
 
 void Database::Impl::applySecurityPragmas() {
