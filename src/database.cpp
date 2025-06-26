@@ -44,6 +44,7 @@ public:
 
     bool store(const SecureBuffer& key, const Entry& entry);
     bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
+    bool fetchAll(std::vector<Entry>& entries_out);
 
 private:
     sqlite3* db_;
@@ -72,6 +73,10 @@ bool Database::store(const SecureBuffer& key, const Entry& entry) {
 
 bool Database::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
     return impl_->fetch(key, domain, username, password_out);
+}
+
+bool Database::fetchAll(std::vector<Entry>& entries_out) {
+    return impl_->fetchAll(entries_out);
 }
 
 bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
@@ -109,6 +114,49 @@ bool Database::Impl::fetch(const SecureBuffer& key, const std::string& domain, c
     }
 
     return false;
+}
+
+bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
+    const char* sql = "SELECT domain, username, password FROM passwords";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    std::vector<Entry> entries;
+    bool done = false;
+    while (!done) {
+        int ret = sqlite3_step(stmt);
+        switch (ret) {
+            case SQLITE_ROW: {
+                const unsigned char* domain_text = sqlite3_column_text(stmt, 0);
+                std::string domain(reinterpret_cast<const char*>(domain_text));
+
+                const void* username_blob = sqlite3_column_blob(stmt, 1);
+                int username_size = sqlite3_column_bytes(stmt, 1);
+
+                const void* password_blob = sqlite3_column_blob(stmt, 2);
+                int password_size = sqlite3_column_bytes(stmt, 2);
+
+                SecureBuffer encrypted_username(reinterpret_cast<const unsigned char*>(username_blob), username_size);
+                SecureBuffer encrypted_password(reinterpret_cast<const unsigned char*>(password_blob), password_size);
+
+                entries.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
+            }
+            case SQLITE_DONE: {
+                done = true;
+                break;
+            }
+            default: {
+                sqlite3_finalize(stmt);
+                return false;
+            }
+        }
+    }
+
+    entries_out = std::move(entries);
+    return true;
 }
 
 std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDomain(const std::string& domain) {

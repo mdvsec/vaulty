@@ -13,6 +13,7 @@ int run(int argc, char** argv) {
     try {
         std::string domain;
         std::string username_raw;
+        bool show_usernames = false;
 
         CLI::App app("vaulty -- CLI password manager", "vaulty");
         app.set_version_flag("--version", "vaulty 0.1");
@@ -22,10 +23,10 @@ int run(int argc, char** argv) {
 
         auto get = app.add_subcommand("get", "Get credentials by domain");
         get->add_option("--domain", domain)->required();
-        get->add_option("--username", username_raw);
+        get->add_flag("--username", username_raw, "Get password for specific username");
 
         auto list = app.add_subcommand("list", "List stored credentials");
-        list->add_option("--domain", domain);
+        list->add_flag("--show", show_usernames, "Show decrypted usernames");
 
         auto remove = app.add_subcommand("remove", "Remove a credential");
         remove->add_option("--domain", domain)->required();
@@ -38,7 +39,7 @@ int run(int argc, char** argv) {
         } else if (get->parsed()) {
             ret = handleGet(domain, username_raw);
         } else if (list->parsed()) {
-            ret = handleList(domain);
+            ret = handleList(show_usernames);
         } else if (remove->parsed()) {
             ret = handleRemove(domain, username_raw);
         } else {

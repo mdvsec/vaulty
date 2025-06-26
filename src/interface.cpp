@@ -48,9 +48,12 @@ SecureBuffer readMasterPassword() {
 
 int handleAdd(const std::string& domain) {
     Database db;
+    SecureBuffer key;
 
-    SecureBuffer master_password = readMasterPassword();
-    SecureBuffer key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    {
+        SecureBuffer master_password = readMasterPassword();
+        key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    }
 
     SecureBuffer username = readSensitiveInput("Create new username: ", false);
     SecureBuffer password = readSensitiveInput("Create new password: ");
@@ -69,9 +72,12 @@ int handleAdd(const std::string& domain) {
 
 int handleGet(const std::string& domain, const std::string& username_raw) {
     Database db;
+    SecureBuffer key;
 
-    SecureBuffer master_password = readMasterPassword();
-    SecureBuffer key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    {
+        SecureBuffer master_password = readMasterPassword();
+        key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    }
 
     if (username_raw.empty()) {
         SecureBuffer username = readSensitiveInput("Enter your username: ", false);
@@ -90,7 +96,42 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
     return 0;
 }
 
-int handleList(const std::string& domain) {
+int handleList(bool show_usernames) {
+    Database db;
+    SecureBuffer key;
+
+    if (show_usernames) {
+        SecureBuffer master_password = readMasterPassword();
+        key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    }
+
+    std::vector<Database::Entry> entries;
+
+    if (!db.fetchAll(entries)) {
+        std::cerr << "Error occured while fetching all entries from database" << std::endl;
+        return 1;
+    }
+
+    if (entries.empty()) {
+        std::cout << "Database is empty, no entries found" << std::endl;
+        return 0;
+    }
+
+    for (const auto& [domain, encrypted_username, _] : entries) {
+        std::cout << "Domain: " << domain << std::endl;
+
+        if (show_usernames) {
+            SecureBuffer username = crypto::decrypt(key, encrypted_username);
+
+            std::cout << "Username: " << username << std::endl;
+        } else {
+            std::cout << "Username: " << "[encrypted]" << std::endl;
+            std::cout << "Password: " << "[encrypted]" << std::endl;
+        }
+
+        std::cout << std::endl;
+    }
+
     return 0;
 }
 
