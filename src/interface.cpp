@@ -58,8 +58,7 @@ int handleAdd(const std::string& domain) {
     SecureBuffer username = readSensitiveInput("Create new username: ", false);
     SecureBuffer password = readSensitiveInput("Create new password: ");
 
-    Database::Entry entry = {domain, std::move(username), std::move(password)}; /* No designated initializers in C++17 :( */
-
+    Database::Entry entry = {domain, std::move(username), std::move(password)};
     if (!db.store(key, entry)) {
         std::cerr << "Error occurred while adding entry for domain: " << domain << std::endl;
         return 1;
@@ -79,19 +78,20 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
         key = crypto::deriveEncryptionKey(master_password, db.getSalt());
     }
 
+    SecureBuffer username;
     if (username_raw.empty()) {
-        SecureBuffer username = readSensitiveInput("Enter your username: ", false);
-        SecureBuffer password;
-
-        if (!db.fetch(key, domain, username, password)) {
-            std::cerr << "Error occurred while fetching entry for domain: " << domain << std::endl;
-            return 1;
-        }
-
-        std::cout << "Password for " << username << " on " << domain << " is: " << password << std::endl;
-    } else {
-        std::cout << "NOT IMPLEMENTED YET" << std::endl;
+        username = readSensitiveInput("Enter your username: ", false);
+   } else {
+        username = SecureBuffer(username_raw.data(), username_raw.size());
     }
+
+    SecureBuffer password;
+    if (!db.fetch(key, domain, username, password)) {
+        std::cerr << "Error occurred while fetching entry for domain: " << domain << std::endl;
+        return 1;
+    }
+
+    std::cout << "Password for " << username << " on " << domain << " is: " << password << std::endl;
 
     return 0;
 }
@@ -106,7 +106,6 @@ int handleList(bool show_usernames) {
     }
 
     std::vector<Database::Entry> entries;
-
     if (!db.fetchAll(entries)) {
         std::cerr << "Error occured while fetching all entries from database" << std::endl;
         return 1;
@@ -116,6 +115,8 @@ int handleList(bool show_usernames) {
         std::cout << "Database is empty, no entries found" << std::endl;
         return 0;
     }
+
+    std::cout << std::endl << "Entries found:" << std::endl;
 
     for (const auto& [domain, encrypted_username, _] : entries) {
         std::cout << "Domain: " << domain << std::endl;

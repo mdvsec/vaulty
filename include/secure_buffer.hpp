@@ -31,7 +31,7 @@ public:
         std::memcpy(data_ + a.size(), b.data(), b.size());
     }
 
-    SecureBuffer(const unsigned char* source, size_t size)
+    SecureBuffer(const void* source, size_t size)
         : SecureBuffer(size) {
         std::memcpy(data_, source, size);
     }

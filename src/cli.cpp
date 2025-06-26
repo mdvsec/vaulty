@@ -23,7 +23,7 @@ int run(int argc, char** argv) {
 
         auto get = app.add_subcommand("get", "Get credentials by domain");
         get->add_option("--domain", domain)->required();
-        get->add_flag("--username", username_raw, "Get password for specific username");
+        get->add_option("--username", username_raw, "Get password for specific username");
 
         auto list = app.add_subcommand("list", "List stored credentials");
         list->add_flag("--show", show_usernames, "Show decrypted usernames");
