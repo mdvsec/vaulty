@@ -10,6 +10,11 @@
 
 namespace vaulty::cli {
 
+int handleAdd(const std::string& domain);
+int handleGet(const std::string& domain, const std::string& username_raw);
+int handleList(bool show_usernames = false);
+int handleRemove(const std::string& domain, const std::string& username_raw);
+
 class TerminalEchoGuard {
 public:
     TerminalEchoGuard() {
@@ -37,11 +42,5 @@ public:
 private:
     termios original_;
 };
-
-SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho = true);
-int handleAdd(const std::string& domain);
-int handleGet(const std::string& domain, const std::string& username_raw);
-int handleList(bool show_usernames = false);
-int handleRemove(const std::string& domain, const std::string& username_raw);
 
 } /* namespace vaulty::cli */

@@ -2,49 +2,8 @@
 
 namespace vaulty::cli {
 
-SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
-    SecureBuffer buffer;
-
-    std::cout << prompt << std::flush;
-
-    auto readInput = [&]() -> ssize_t {
-        if (noecho) {
-            TerminalEchoGuard guard;
-            return read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
-        } else {
-            return read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
-        }
-    };
-
-    ssize_t bytes_read = readInput();
-    if (bytes_read <= 0) {
-        throw std::runtime_error("Aborted: failed to read from the CLI");
-    }
-
-    size_t len = static_cast<size_t>(bytes_read);
-    if (len > 0 && buffer[len - 1] == '\n') {
-        --len;
-    }
-
-    if (noecho) {
-        std::cout << std::endl;
-    }
-
-    buffer.resize(len);
-
-    return buffer; 
-}
-
-SecureBuffer readMasterPassword() {
-    SecureBuffer master_password = readSensitiveInput("Enter master password: ");
-    SecureBuffer verification = readSensitiveInput("Confirm master password: ");
-
-    if (master_password != verification) {
-        throw std::runtime_error("Aborted: passwords do not match");
-    }
-
-    return master_password;
-}
+SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho = true);
+SecureBuffer readMasterPassword();
 
 int handleAdd(const std::string& domain) {
     Database db;
@@ -138,6 +97,50 @@ int handleList(bool show_usernames) {
 
 int handleRemove(const std::string& domain, const std::string& username_raw) {
     return 0;
+}
+
+SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
+    SecureBuffer buffer;
+
+    std::cout << prompt << std::flush;
+
+    auto readInput = [&]() -> ssize_t {
+        if (noecho) {
+            TerminalEchoGuard guard;
+            return read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
+        }
+
+        return read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
+    };
+
+    ssize_t bytes_read = readInput();
+    if (bytes_read <= 0) {
+        throw std::runtime_error("Aborted: failed to read from the CLI");
+    }
+
+    size_t len = static_cast<size_t>(bytes_read);
+    if (len > 0 && buffer[len - 1] == '\n') {
+        --len;
+    }
+
+    if (noecho) {
+        std::cout << std::endl;
+    }
+
+    buffer.resize(len);
+
+    return buffer;
+}
+
+SecureBuffer readMasterPassword() {
+    SecureBuffer master_password = readSensitiveInput("Enter master password: ");
+    SecureBuffer verification = readSensitiveInput("Confirm master password: ");
+
+    if (master_password != verification) {
+        throw std::runtime_error("Aborted: passwords do not match");
+    }
+
+    return master_password;
 }
 
 } /* namespace vaulty::cli */
