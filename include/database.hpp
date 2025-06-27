@@ -35,7 +35,7 @@ public:
     bool store(const SecureBuffer& key, const Entry& entry);
     bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
     bool fetchAll(std::vector<Entry>& entries_out);
-    bool remove(const std::string& domain, const std::string& username);
+    bool remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username);
 
 private:
     static constexpr std::string_view kDefaultPath = "passwords.db";

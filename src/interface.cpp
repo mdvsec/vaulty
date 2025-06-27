@@ -96,6 +96,39 @@ int handleList(bool show_usernames) {
 }
 
 int handleRemove(const std::string& domain, const std::string& username_raw) {
+    Database db;
+    SecureBuffer key;
+
+    {
+        SecureBuffer master_password = readMasterPassword();
+        key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+    }
+
+    SecureBuffer username;
+    if (username_raw.empty()) {
+        username = readSensitiveInput("Enter your username: ", false);
+    } else {
+        username = SecureBuffer(username_raw.data(), username_raw.size());
+    }
+
+    char confirmation;
+    std::cout << "Do you really want to delete the entry for domain " << domain
+              << " and username " << username << "? [y/N]: ";
+    std::cin >> confirmation;
+
+    if (confirmation != 'y' && confirmation != 'Y') {
+        std::cout << "Aborted" << std::endl;
+        return 1;
+    }
+
+    if (!db.remove(key, domain, username)) {
+        std::cerr << "Failed to remove entry for domain: " << domain << std::endl;
+        return 1;
+    }
+
+    std::cout << "Entry for " << username << " on "
+              << domain << " successfully removed." << std::endl;
+
     return 0;
 }
 

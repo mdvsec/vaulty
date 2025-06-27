@@ -45,6 +45,7 @@ public:
     bool store(const SecureBuffer& key, const Entry& entry);
     bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
     bool fetchAll(std::vector<Entry>& entries_out);
+    bool remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username);
 
 private:
     sqlite3* db_;
@@ -77,6 +78,10 @@ bool Database::fetch(const SecureBuffer& key, const std::string& domain, const S
 
 bool Database::fetchAll(std::vector<Entry>& entries_out) {
     return impl_->fetchAll(entries_out);
+}
+
+bool Database::remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username) {
+    return impl_->remove(key, domain, username);
 }
 
 bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
@@ -159,11 +164,40 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
     return true;
 }
 
+bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username) {
+    auto entries = fetchAllByDomain(domain);
+
+    for (const auto& [encrypted_username, _] : entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, encrypted_username);
+
+        if (decrypted_username == username) {
+            const char* sql = "DELETE FROM passwords WHERE domain = ? AND username = ?";
+
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return false;
+            }
+
+            if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
+                sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
+                return false;
+            }
+
+            bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+            sqlite3_finalize(stmt);
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDomain(const std::string& domain) {
     const char* sql = "SELECT username, password FROM passwords WHERE domain = ?";
 
     sqlite3_stmt* stmt;
-
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         throw std::runtime_error("Failed to prepare statement: " + std::string(sqlite3_errmsg(db_)));
     }
