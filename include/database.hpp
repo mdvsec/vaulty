@@ -1,14 +1,15 @@
 #pragma once
 
-#include <sqlite3.h>
+#include <array>
 #include <memory>
 #include <string>
-#include <array>
-#include <vector>
 #include <string_view>
+#include <vector>
 
-#include <secure_buffer.hpp>
+#include <sqlite3.h>
+
 #include <crypto.hpp>
+#include <secure_buffer.hpp>
 
 namespace vaulty {
 

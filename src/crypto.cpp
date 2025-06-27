@@ -1,7 +1,8 @@
-#include <openssl/evp.h>
-#include <openssl/rand.h>
 #include <array>
 #include <stdexcept>
+
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
 #include <crypto.hpp>
 

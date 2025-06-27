@@ -1,4 +1,5 @@
 #include <cstdlib>
+
 #include <interface.hpp>
 
 namespace vaulty::cli {

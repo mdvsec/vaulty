@@ -1,7 +1,8 @@
-#include <CLI/CLI.hpp>
-#include <string>
-#include <stdexcept>
 #include <cstdlib>
+#include <stdexcept>
+#include <string>
+
+#include <CLI/CLI.hpp>
 
 #include <cli.hpp>
 #include <interface.hpp>

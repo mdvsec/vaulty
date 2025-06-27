@@ -1,11 +1,12 @@
+#include <array>
 #include <filesystem>
 #include <stdexcept>
-#include <array>
 #include <vector>
+
 #include <openssl/rand.h>
 
-#include <database.hpp>
 #include <crypto.hpp>
+#include <database.hpp>
 
 namespace vaulty {
 

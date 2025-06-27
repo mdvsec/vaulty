@@ -1,11 +1,12 @@
 #pragma once
 
-#include <sys/mman.h>
-#include <openssl/crypto.h>
-#include <utility>
-#include <ostream>
 #include <iomanip>
 #include <ios>
+#include <ostream>
+#include <utility>
+
+#include <openssl/crypto.h>
+#include <sys/mman.h>
 
 #include <secure_memory_manager.hpp>
 

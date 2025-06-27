@@ -1,7 +1,8 @@
 #pragma once
 
-#include <openssl/crypto.h>
 #include <stdexcept>
+
+#include <openssl/crypto.h>
 
 namespace vaulty {
 

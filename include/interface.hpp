@@ -1,12 +1,13 @@
 #pragma once
 
-#include <termios.h>
-#include <unistd.h>
 #include <iostream>
 #include <stdexcept>
 
-#include <secure_buffer.hpp>
+#include <unistd.h>
+#include <termios.h>
+
 #include <database.hpp>
+#include <secure_buffer.hpp>
 
 namespace vaulty::cli {
 
