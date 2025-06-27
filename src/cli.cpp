@@ -1,6 +1,7 @@
 #include <CLI/CLI.hpp>
 #include <string>
 #include <stdexcept>
+#include <cstdlib>
 
 #include <cli.hpp>
 #include <interface.hpp>
@@ -8,7 +9,7 @@
 namespace vaulty::cli {
 
 int run(int argc, char** argv) {
-    int ret = 0;
+    int ret = EXIT_SUCCESS;
 
     try {
         std::string domain;
@@ -47,7 +48,7 @@ int run(int argc, char** argv) {
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
-        ret = 1;
+        ret = EXIT_FAILURE;
     }
 
     return ret;

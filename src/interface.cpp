@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <interface.hpp>
 
 namespace vaulty::cli {
@@ -20,12 +21,12 @@ int handleAdd(const std::string& domain) {
     Database::Entry entry = {domain, std::move(username), std::move(password)};
     if (!db.store(key, entry)) {
         std::cerr << "Error occurred while adding entry for domain: " << domain << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     std::cout << "Added entry for domain: " << domain << std::endl;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int handleGet(const std::string& domain, const std::string& username_raw) {
@@ -47,12 +48,12 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
     SecureBuffer password;
     if (!db.fetch(key, domain, username, password)) {
         std::cerr << "Error occurred while fetching entry for domain: " << domain << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     std::cout << "Password for " << username << " on " << domain << " is: " << password << std::endl;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int handleList(bool show_usernames) {
@@ -67,12 +68,12 @@ int handleList(bool show_usernames) {
     std::vector<Database::Entry> entries;
     if (!db.fetchAll(entries)) {
         std::cerr << "Error occured while fetching all entries from database" << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     if (entries.empty()) {
         std::cout << "Database is empty, no entries found" << std::endl;
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     std::cout << std::endl << "Entries found:" << std::endl;
@@ -92,7 +93,7 @@ int handleList(bool show_usernames) {
         std::cout << std::endl;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int handleRemove(const std::string& domain, const std::string& username_raw) {
@@ -118,18 +119,18 @@ int handleRemove(const std::string& domain, const std::string& username_raw) {
 
     if (confirmation != 'y' && confirmation != 'Y') {
         std::cout << "Aborted" << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     if (!db.remove(key, domain, username)) {
         std::cerr << "Failed to remove entry for domain: " << domain << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     std::cout << "Entry for " << username << " on "
               << domain << " successfully removed." << std::endl;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
