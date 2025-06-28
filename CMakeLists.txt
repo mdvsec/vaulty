@@ -31,3 +31,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(CLI11)
 target_link_libraries(vaulty PRIVATE CLI11::CLI11)
+
+# clip
+set(CLIP_EXAMPLES OFF CACHE BOOL "Compile clip examples")
+set(CLIP_TESTS OFF CACHE BOOL "Compile clip tests")
+FetchContent_Declare(
+  clip
+  GIT_REPOSITORY https://github.com/dacap/clip.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(clip)
+target_include_directories(vaulty PRIVATE ${clip_SOURCE_DIR})
+target_link_libraries(vaulty PRIVATE clip)

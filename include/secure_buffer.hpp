@@ -3,8 +3,10 @@
 #include <iomanip>
 #include <ios>
 #include <ostream>
+#include <string>
 #include <utility>
 
+#include <clip.h>
 #include <openssl/crypto.h>
 #include <sys/mman.h>
 
@@ -90,6 +92,17 @@ public:
         return SecureBuffer(*this, rhs);
     }
 
+    bool copyToClipboard() const {
+        std::string tmp(reinterpret_cast<const char *>(data_), size_);
+        bool result = clip::set_text(tmp);
+
+        if (tmp.size()) {
+            OPENSSL_cleanse(&tmp[0], tmp.size());
+        }
+
+        return result;
+    }
+
     unsigned char* data() const {
         return data_;
     }
@@ -132,7 +145,7 @@ inline std::ostream& operator<<(std::ostream& os, const SecureBuffer& buffer) {
 
         os.flags(f);
     } else {
-        os.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+        os.write(reinterpret_cast<const char *>(buffer.data()), buffer.size());
     }
 
     return os;

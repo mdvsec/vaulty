@@ -52,7 +52,12 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "Password for " << username << " on " << domain << " is: " << password << std::endl;
+    if (!password.copyToClipboard()) {
+        std::cerr << "Error occurred while copying a password to clipboard" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "Password for " << username << " on " << domain << " copied to clipboard" << std::endl;
 
     return EXIT_SUCCESS;
 }
