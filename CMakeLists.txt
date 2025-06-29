@@ -13,6 +13,18 @@ file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
 add_executable(vaulty ${SOURCES})
 target_include_directories(vaulty PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
+# Set default build type to Release if not specified
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (Debug, Release)" FORCE)
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_definitions(DEBUG_MODE)
+    target_compile_options(vaulty PRIVATE -Wall -Wextra -pedantic -g -O0)
+else()
+    target_compile_options(vaulty PRIVATE -Wall -Wextra -pedantic -O3)
+endif()
+
 # OpenSSL
 find_package(OpenSSL REQUIRED)
 target_include_directories(vaulty PRIVATE ${OPENSSL_INCLUDE_DIR})

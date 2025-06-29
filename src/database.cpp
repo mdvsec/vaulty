@@ -188,7 +188,7 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
             bool success = (sqlite3_step(stmt) == SQLITE_DONE);
             sqlite3_finalize(stmt);
 
-            return true;
+            return success;
         }
     }
 
