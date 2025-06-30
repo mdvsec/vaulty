@@ -48,10 +48,36 @@ target_link_libraries(vaulty PRIVATE CLI11::CLI11)
 set(CLIP_EXAMPLES OFF CACHE BOOL "Compile clip examples")
 set(CLIP_TESTS OFF CACHE BOOL "Compile clip tests")
 FetchContent_Declare(
-  clip
-  GIT_REPOSITORY https://github.com/dacap/clip.git
-  GIT_TAG main
+    clip
+    GIT_REPOSITORY https://github.com/dacap/clip.git
+    GIT_TAG main
 )
 FetchContent_MakeAvailable(clip)
 target_include_directories(vaulty PRIVATE ${clip_SOURCE_DIR})
 target_link_libraries(vaulty PRIVATE clip)
+
+# Use GoogleTest framework for testing
+enable_testing()
+
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(googletest)
+
+file(GLOB TEST_SOURCES "${PROJECT_SOURCE_DIR}/tests/*.cpp")
+if (TEST_SOURCES)
+    set(SOURCES_COPY ${SOURCES})
+    list(REMOVE_ITEM SOURCES_COPY "${PROJECT_SOURCE_DIR}/src/main.cpp")
+
+    add_executable(vaulty_tests ${TEST_SOURCES} ${SOURCES_COPY})
+
+    target_compile_definitions(vaulty_tests PRIVATE UNIT_TESTING)
+
+    target_link_libraries(vaulty_tests GTest::gtest_main)
+
+    include(GoogleTest)
+    gtest_discover_tests(vaulty_tests)
+endif()
