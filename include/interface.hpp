@@ -16,6 +16,15 @@ int handleGet(const std::string& domain, const std::string& username_raw);
 int handleList(bool show_usernames = false);
 int handleRemove(const std::string& domain, const std::string& username_raw);
 
+/*
+ * @class TerminalEchoGuard
+ * @brief RAII guard to disable terminal echo while active
+ *
+ * Disables echo on stdin (useful for password input), restoring original
+ * terminal settings on destruction.
+ *
+ * @throws std::runtime_error if terminal attributes cannot be changed
+ */
 class TerminalEchoGuard {
 public:
     TerminalEchoGuard() {

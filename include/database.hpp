@@ -13,6 +13,17 @@
 
 namespace vaulty {
 
+/*
+ * @class Database
+ * @brief Manages encrypted storage of user credentials using SQLite
+ *
+ * Handles secure storage, retrieval, and management of user credentials.
+ * Protects sensitive data in memory using SecureBuffer, and enforces access via
+ * cryptographic keys. Provides methods to add, fetch, list, and delete
+ * credential entries.
+ *
+ * @throws std::runtime_error if database initialization or opening fails
+ */
 class Database {
 public:
     struct Entry {

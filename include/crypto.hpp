@@ -4,6 +4,10 @@
 
 #include <secure_buffer.hpp>
 
+/*
+ * @namespace vaulty::crypto
+ * @brief Cryptographic utilities for key derivation and AEAD encryption
+ */
 namespace vaulty::crypto {
 
 static constexpr size_t kSaltSize = 64;

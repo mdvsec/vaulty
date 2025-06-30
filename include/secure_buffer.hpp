@@ -14,6 +14,16 @@
 
 namespace vaulty {
 
+/*
+ * @class SecureBuffer
+ * @brief Securely allocated memory buffer for sensitive data
+ *
+ * Allocates memory from OpenSSL's secure heap to protect sensitive data, with
+ * automatic cleansing on release. Supports move semantics, constant-time
+ * comparison and optional clipboard export with data sanitization.
+ *
+ * @throws std::runtime_error if memory allocation fails
+ */
 class SecureBuffer {
 public:
     static constexpr size_t kMaxPasswordLength = 128;

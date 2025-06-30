@@ -6,6 +6,16 @@
 
 namespace vaulty {
 
+/*
+ * @class SecureMemoryManager
+ * @brief Singleton to initialize and manage OpenSSL's secure heap
+ *
+ * Ensures secure memory is initialized once per process lifetime and properly
+ * cleaned up on destruction. Disallows copying and moving to maintain singleton
+ * semantics.
+ *
+ * @throws std::runtime_error if memory initialization fails
+ */
 class SecureMemoryManager {
 public:
     static void ensureInitialized() {
