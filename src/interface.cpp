@@ -50,7 +50,7 @@ int handleGet(const std::string& domain, std::string& username_raw) {
     SecureBuffer username;
     if (username_raw.empty()) {
         username = readSensitiveInput("Enter your username: ", false);
-   } else {
+    } else {
         username = SecureBuffer(username_raw);
     }
 
