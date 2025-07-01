@@ -12,9 +12,9 @@
 namespace vaulty::cli {
 
 int handleAdd(const std::string& domain);
-int handleGet(const std::string& domain, const std::string& username_raw);
+int handleGet(const std::string& domain, std::string& username_raw);
 int handleList(bool show_usernames = false);
-int handleRemove(const std::string& domain, const std::string& username_raw);
+int handleRemove(const std::string& domain, std::string& username_raw);
 
 /*
  * @class TerminalEchoGuard

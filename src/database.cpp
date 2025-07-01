@@ -168,8 +168,8 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
                 const void* password_blob = sqlite3_column_blob(stmt, 2);
                 int password_size = sqlite3_column_bytes(stmt, 2);
 
-                SecureBuffer encrypted_username(reinterpret_cast<const unsigned char*>(username_blob), username_size);
-                SecureBuffer encrypted_password(reinterpret_cast<const unsigned char*>(password_blob), password_size);
+                SecureBuffer encrypted_username(username_blob, username_size);
+                SecureBuffer encrypted_password(password_blob, password_size);
 
                 entries.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
             }
@@ -263,8 +263,8 @@ std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDom
                 const void* password_blob = sqlite3_column_blob(stmt, 1);
                 int password_size = sqlite3_column_bytes(stmt, 1);
 
-                SecureBuffer encrypted_username(reinterpret_cast<const unsigned char*>(username_blob), username_size);
-                SecureBuffer encrypted_password(reinterpret_cast<const unsigned char*>(password_blob), password_size);
+                SecureBuffer encrypted_username(username_blob, username_size);
+                SecureBuffer encrypted_password(password_blob, password_size);
 
                 results.emplace_back(std::move(encrypted_username), std::move(encrypted_password));
                 break;

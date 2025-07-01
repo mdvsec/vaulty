@@ -35,7 +35,7 @@ int handleAdd(const std::string& domain) {
     return EXIT_SUCCESS;
 }
 
-int handleGet(const std::string& domain, const std::string& username_raw) {
+int handleGet(const std::string& domain, std::string& username_raw) {
     LOG_INFO("Fetching password entry for domain: {}", domain);
 
     Database db;
@@ -51,7 +51,7 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
     if (username_raw.empty()) {
         username = readSensitiveInput("Enter your username: ", false);
    } else {
-        username = SecureBuffer(username_raw.data(), username_raw.size());
+        username = SecureBuffer(username_raw);
     }
 
     SecureBuffer password;
@@ -66,7 +66,7 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
     }
 
     LOG_INFO("Password for user copied to clipboard for domain: {}", domain);
-    std::cout << "Password for " << username << " on " << domain << " copied to clipboard" << std::endl;
+    std::cout << "Password for user copied to clipboard for domain " << domain << std::endl;
 
     return EXIT_SUCCESS;
 }
@@ -115,7 +115,7 @@ int handleList(bool show_usernames) {
     return EXIT_SUCCESS;
 }
 
-int handleRemove(const std::string& domain, const std::string& username_raw) {
+int handleRemove(const std::string& domain, std::string& username_raw) {
     LOG_INFO("Removing entry for domain: {}", domain);
 
     Database db;
@@ -131,7 +131,7 @@ int handleRemove(const std::string& domain, const std::string& username_raw) {
     if (username_raw.empty()) {
         username = readSensitiveInput("Enter your username: ", false);
     } else {
-        username = SecureBuffer(username_raw.data(), username_raw.size());
+        username = SecureBuffer(username_raw);
     }
 
     char confirmation;
@@ -151,8 +151,7 @@ int handleRemove(const std::string& domain, const std::string& username_raw) {
     }
 
     LOG_INFO("Successfully removed entry for domain: {}", domain);
-    std::cout << "Entry for " << username << " on "
-              << domain << " successfully removed." << std::endl;
+    std::cout << "Entry for user on " << domain << " successfully removed" << std::endl;
 
     return EXIT_SUCCESS;
 }
@@ -174,8 +173,7 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
 
     ssize_t bytes_read = readInput();
     if (bytes_read <= 0) {
-        LOG_ERROR("Failed to read sensitive input from CLI");
-        throw std::runtime_error("Aborted: failed to read from the CLI");
+        throw std::runtime_error("Failed to read sensitive input from CLI");
     }
 
     size_t len = static_cast<size_t>(bytes_read);
@@ -200,8 +198,7 @@ SecureBuffer readMasterPassword() {
     SecureBuffer verification = readSensitiveInput("Confirm master password: ");
 
     if (master_password != verification) {
-        LOG_ERROR("Master password confirmation failed");
-        throw std::runtime_error("Aborted: passwords do not match");
+        throw std::runtime_error("Master password confirmation failed");
     }
 
     LOG_INFO("Master password confirmed successfully");

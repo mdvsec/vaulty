@@ -44,6 +44,14 @@ public:
         std::memcpy(data_ + a.size(), b.data(), b.size());
     }
 
+    SecureBuffer(std::string& source)
+        : SecureBuffer(source.size()) {
+        std::memcpy(data_, source.data(), source.size());
+        if (source.size()) {
+            OPENSSL_cleanse(&source[0], source.size());
+        }
+    }
+
     SecureBuffer(const void* source, size_t size)
         : SecureBuffer(size) {
         std::memcpy(data_, source, size);
