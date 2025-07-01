@@ -6,6 +6,7 @@
 
 #include <cli.hpp>
 #include <interface.hpp>
+#include <logger.hpp>
 
 namespace vaulty::cli {
 
@@ -48,7 +49,7 @@ int run(int argc, char** argv) {
             std::cout << app.help() << std::endl;
         }
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        LOG_ERROR("Exception caught during execution: '{}'. Terminating program", e.what());
         ret = EXIT_FAILURE;
     }
 

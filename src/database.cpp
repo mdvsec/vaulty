@@ -7,6 +7,7 @@
 
 #include <crypto.hpp>
 #include <database.hpp>
+#include <logger.hpp>
 
 namespace vaulty {
 
@@ -15,6 +16,8 @@ public:
     Impl(std::string_view path)
         : db_(nullptr), kdf_salt_{} {
         bool db_existed = std::filesystem::exists(path);
+
+        LOG_INFO("Opening database at path '{}'", path);
 
         if (sqlite3_open_v2(path.data(), &db_,
                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
@@ -26,8 +29,10 @@ public:
         applySecurityPragmas();
 
         if (db_existed) {
+            LOG_INFO("Existing database detected, verifying integrity");
             verifyDatabaseIntegrity();
         } else {
+            LOG_INFO("No existing database found, creating tables and initializing security parameters");
             createTables();
             initSecurityParameters();
         }
@@ -35,6 +40,7 @@ public:
 
     ~Impl() {
         if (db_) {
+            LOG_INFO("Closing database");
             sqlite3_close(db_);
         }
     }
@@ -86,6 +92,8 @@ bool Database::remove(const SecureBuffer& key, const std::string& domain, const 
 }
 
 bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
+    LOG_INFO("Storing entry for domain '{}'", entry.domain);
+
     SecureBuffer encrypted_username = crypto::encrypt(key, entry.username);
     SecureBuffer encrypted_password = crypto::encrypt(key, entry.password);
 
@@ -93,40 +101,55 @@ bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
 
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare statement for storing entry: {}", sqlite3_errmsg(db_));
         return false;
     }
 
     if (sqlite3_bind_text(stmt, 1, entry.domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
         sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK ||
         sqlite3_bind_blob(stmt, 3, encrypted_password.data(), static_cast<int>(encrypted_password.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+        LOG_ERROR("Failed to bind parameters for storing entry");
         return false;
     }
 
     bool success = (sqlite3_step(stmt) == SQLITE_DONE);
     sqlite3_finalize(stmt);
 
+    if (success) {
+        LOG_INFO("Successfully stored entry for domain '{}'", entry.domain);
+    } else {
+        LOG_ERROR("Failed to execute statement to store entry for domain '{}'", entry.domain);
+    }
+
     return success;
 }
 
 bool Database::Impl::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
+    LOG_INFO("Fetching password for domain '{}'", domain);
+
     auto entries = fetchAllByDomain(domain);
 
     for (const auto& [encrypted_username, encrypted_password] : entries) {
         SecureBuffer decrypted_username = crypto::decrypt(key, encrypted_username);
         if (decrypted_username == username) {
             password_out = crypto::decrypt(key, encrypted_password);
+            LOG_INFO("Password fetched for domain '{}'", domain);
             return true;
         }
     }
 
+    LOG_WARN("No matching username found for domain '{}'", domain);
     return false;
 }
 
 bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
+    LOG_INFO("Fetching all entries from database");
+
     const char* sql = "SELECT domain, username, password FROM passwords";
 
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare statement for fetching all entries: {}", sqlite3_errmsg(db_));
         return false;
     }
 
@@ -155,17 +178,24 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
                 break;
             }
             default: {
+                LOG_ERROR("Error executing fetchAll query: {}", sqlite3_errmsg(db_));
                 sqlite3_finalize(stmt);
                 return false;
             }
         }
     }
 
+    sqlite3_finalize(stmt);
+
+    LOG_INFO("Fetched {} entries from database", entries.size());
+
     entries_out = std::move(entries);
     return true;
 }
 
 bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username) {
+    LOG_INFO("Removing entry for domain '{}'", domain);
+
     auto entries = fetchAllByDomain(domain);
 
     for (const auto& [encrypted_username, _] : entries) {
@@ -176,11 +206,13 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
 
             sqlite3_stmt* stmt;
             if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                LOG_ERROR("Failed to prepare statement for removal: {}", sqlite3_errmsg(db_));
                 return false;
             }
 
             if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
                 sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+                LOG_ERROR("Failed to bind parameters for removal");
                 sqlite3_finalize(stmt);
                 return false;
             }
@@ -188,22 +220,33 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
             bool success = (sqlite3_step(stmt) == SQLITE_DONE);
             sqlite3_finalize(stmt);
 
+            if (success) {
+                LOG_INFO("Successfully removed entry for domain '{}'", domain);
+            } else {
+                LOG_ERROR("Failed to execute removal for domain '{}'", domain);
+            }
+
             return success;
         }
     }
 
+    LOG_WARN("No matching entry found to remove for domain '{}'", domain);
     return false;
 }
 
 std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDomain(const std::string& domain) {
+    LOG_INFO("Fetching all entries by domain '{}'", domain);
+
     const char* sql = "SELECT username, password FROM passwords WHERE domain = ?";
 
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare statement: {}", sqlite3_errmsg(db_));
         throw std::runtime_error("Failed to prepare statement: " + std::string(sqlite3_errmsg(db_)));
     }
 
     if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_STATIC) != SQLITE_OK) {
+        LOG_ERROR("Failed to bind domain parameter");
         sqlite3_finalize(stmt);
         throw std::runtime_error("Failed to bind domain parameter");
     }
@@ -231,6 +274,7 @@ std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDom
                 break;
             }
             default: {
+                LOG_ERROR("Error executing fetchAllByDomain query");
                 sqlite3_finalize(stmt);
                 throw std::runtime_error("Error executing query");
             }
@@ -238,10 +282,15 @@ std::vector<std::pair<SecureBuffer, SecureBuffer>> Database::Impl::fetchAllByDom
     }
 
     sqlite3_finalize(stmt);
+
+    LOG_INFO("Fetched {} entries for domain '{}'", results.size(), domain);
+
     return results;
 }
 
 void Database::Impl::applySecurityPragmas() {
+    LOG_INFO("Applying SQLite security pragmas");
+
     auto executePragma = [&](const std::string& name, const std::string& value) {
         std::string sql = "PRAGMA " + name + "=" + value + ";";
         if (sqlite3_exec(db_, sql.c_str(),
@@ -252,9 +301,13 @@ void Database::Impl::applySecurityPragmas() {
 
     executePragma("journal_mode", "DELETE");
     executePragma("secure_delete", "ON");
+
+    LOG_INFO("SQLite security pragmas applied");
 }
 
 void Database::Impl::createTables() {
+    LOG_INFO("Creating database tables");
+
     auto executeSQL = [&](std::string_view sql) {
         if (sqlite3_exec(db_, sql.data(),
                          nullptr, nullptr, nullptr) != SQLITE_OK) {
@@ -275,9 +328,13 @@ void Database::Impl::createTables() {
                              "iterations INTEGER NOT NULL)";
     executeSQL(sql_passwords);
     executeSQL(sql_params);
+
+    LOG_INFO("Database tables created");
 }
 
 void Database::Impl::initSecurityParameters() {
+    LOG_INFO("Initializing security parameters");
+
     if (RAND_bytes(kdf_salt_.data(), kdf_salt_.size()) != 1) {
         throw std::runtime_error("Failed to generate salt");
     }
@@ -286,6 +343,7 @@ void Database::Impl::initSecurityParameters() {
     const char* sql = "INSERT INTO kdf_params (id, salt, iterations) VALUES (1, ?, ?)";
     if (sqlite3_prepare_v2(db_, sql,
                            -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare statement for inserting KDF salt: {}", sqlite3_errmsg(db_));
         throw std::runtime_error("Failed to prepare statement");
     }
 
@@ -294,50 +352,65 @@ void Database::Impl::initSecurityParameters() {
                           SQLITE_STATIC) != SQLITE_OK ||
         sqlite3_bind_int(stmt, 2,
                          static_cast<int>(crypto::kIterationsCount)) != SQLITE_OK) {
+        LOG_ERROR("Failed to bind KDF salt parameter");
         throw std::runtime_error("Failed to bind statement parameters");
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
+        LOG_ERROR("Failed to insert KDF salt");
         sqlite3_finalize(stmt);
         throw std::runtime_error("Failed to insert KDF parameters");
     }
 
     sqlite3_finalize(stmt);
+
+    LOG_INFO("Security parameters initialized");
 }
 
 void Database::Impl::verifyDatabaseIntegrity() {
+    LOG_INFO("Verifying database integrity");
+
     auto checkTable = [&](const char* table) {
+        LOG_INFO("Checking existence of table '{}'", table);
+
         sqlite3_stmt* stmt;
         const char* sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
         if (sqlite3_prepare_v2(db_, sql, -1,
                                &stmt, nullptr) != SQLITE_OK) {
+            LOG_ERROR("Failed to prepare table existence check for '{}'", table);
             throw std::runtime_error("Failed to prepare table existence check");
         }
 
         if (sqlite3_bind_text(stmt, 1, table,
                               -1, SQLITE_STATIC) != SQLITE_OK) {
+            LOG_ERROR("Failed to bind parameters for table '{}'", table);
             throw std::runtime_error("Failed to bind table existence parameters");
         }
 
         bool exists = (sqlite3_step(stmt) == SQLITE_ROW);
         sqlite3_finalize(stmt);
 
+        LOG_INFO("Table '{}' existence: {}", table, exists ? "found" : "not found");
         return exists;
     };
 
     if (!checkTable("passwords") || !checkTable("kdf_params")) {
+        LOG_ERROR("Required tables missing");
         throw std::runtime_error("Required tables missing");
     }
 
+    LOG_INFO("Fetching KDF parameters");
     sqlite3_stmt* stmt;
     const char* sql = "SELECT salt, iterations FROM kdf_params WHERE id=1";
     if (sqlite3_prepare_v2(db_, sql, -1,
                            &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare KDF parameters query");
         throw std::runtime_error("Failed to prepare KDF parameters query");
     }
 
     if (sqlite3_step(stmt) != SQLITE_ROW) {
         sqlite3_finalize(stmt);
+        LOG_ERROR("KDF parameters not found");
         throw std::runtime_error("KDF parameters not found");
     }
 
@@ -347,26 +420,32 @@ void Database::Impl::verifyDatabaseIntegrity() {
 
     if (!salt_blob || salt_size != static_cast<int>(crypto::kSaltSize)) {
         sqlite3_finalize(stmt);
+        LOG_ERROR("Invalid salt in KDF parameters");
         throw std::runtime_error("Invalid salt in KDF parameters");
     }
 
     std::memcpy(kdf_salt_.data(), salt_blob, crypto::kSaltSize);
+    LOG_INFO("KDF salt loaded, iterations: {}", iterations);
 
     if (iterations < static_cast<int>(crypto::kIterationsCount)) {
         sqlite3_finalize(stmt);
+        LOG_ERROR("Iterations count too low in KDF parameters: {}", iterations);
         throw std::runtime_error("Iterations count too low in KDF parameters");
     }
 
     sqlite3_finalize(stmt);
 
+    LOG_INFO("Performing PRAGMA integrity_check");
     const char* integrity_sql = "PRAGMA integrity_check;";
     if (sqlite3_prepare_v2(db_, integrity_sql, -1,
                            &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR("Failed to prepare integrity check query");
         throw std::runtime_error("Failed to prepare integrity check query");
     }
 
     if (sqlite3_step(stmt) != SQLITE_ROW) {
         sqlite3_finalize(stmt);
+        LOG_ERROR("Integrity check query failed");
         throw std::runtime_error("Integrity check query failed");
     }
 
@@ -374,10 +453,13 @@ void Database::Impl::verifyDatabaseIntegrity() {
     if (!result ||
         std::string_view(reinterpret_cast<const char*>(result)) != "ok") {
         sqlite3_finalize(stmt);
+        LOG_ERROR("Database integrity check failed");
         throw std::runtime_error("Database integrity check failed");
     }
 
     sqlite3_finalize(stmt);
+
+    LOG_INFO("Database integrity verified");
 }
 
 } /* namespace vaulty */

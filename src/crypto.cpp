@@ -5,10 +5,13 @@
 #include <openssl/rand.h>
 
 #include <crypto.hpp>
+#include <logger.hpp>
 
 namespace vaulty::crypto {
 
 SecureBuffer deriveEncryptionKey(const SecureBuffer& masterPassword, const std::array<unsigned char, kSaltSize>& salt) {
+    LOG_INFO("Deriving encryption key using PBKDF2-HMAC-SHA512");
+
     SecureBuffer key(kKeySize);
 
     if (!PKCS5_PBKDF2_HMAC(reinterpret_cast<const char*>(masterPassword.data()),
@@ -22,16 +25,18 @@ SecureBuffer deriveEncryptionKey(const SecureBuffer& masterPassword, const std::
         throw std::runtime_error("PKCS5_PBKDF2_HMAC key derivation failed");
     }
 
+    LOG_INFO("Key derivation successful");
     return key;
 }
 
 SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext) {
+    LOG_INFO("Starting encryption");
+
     SecureBuffer iv(kIvSize);
     if (RAND_bytes(iv.data(), iv.size()) != 1) {
         throw std::runtime_error("Failed to generate IV");
     }
 
-    //SecureBuffer ciphertext(plaintext.size() + EVP_CIPHER_block_size(EVP_aes_256_gcm())); /* the ciphertext may be longer than the plaintext */
     SecureBuffer ciphertext(plaintext.size());
     SecureBuffer tag(kTagSize);
     int ciphertext_len = 0;
@@ -72,10 +77,13 @@ SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext) {
         ciphertext.resize(ciphertext_len);
     }
 
+    LOG_INFO("Encryption completed successfully");
     return iv + ciphertext + tag;
 }
 
 SecureBuffer decrypt(const SecureBuffer& key, const SecureBuffer& blob) {
+    LOG_INFO("Starting decryption");
+
     int ciphertext_len = blob.size() - kIvSize - kTagSize;
     int len = 0;
     int plaintext_len = 0;
@@ -120,6 +128,7 @@ SecureBuffer decrypt(const SecureBuffer& key, const SecureBuffer& blob) {
         plaintext.resize(plaintext_len);
     }
 
+    LOG_INFO("Decryption completed successfully");
     return plaintext;
 }
 

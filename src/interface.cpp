@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include <interface.hpp>
+#include <logger.hpp>
 
 namespace vaulty::cli {
 
@@ -8,12 +9,15 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho = true);
 SecureBuffer readMasterPassword();
 
 int handleAdd(const std::string& domain) {
+    LOG_INFO("Adding new entry for domain: {}", domain);
+
     Database db;
     SecureBuffer key;
 
     {
         SecureBuffer master_password = readMasterPassword();
         key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+        LOG_DEBUG("Derived encryption key for handleAdd()");
     }
 
     SecureBuffer username = readSensitiveInput("Create new username: ", false);
@@ -21,22 +25,26 @@ int handleAdd(const std::string& domain) {
 
     Database::Entry entry = {domain, std::move(username), std::move(password)};
     if (!db.store(key, entry)) {
-        std::cerr << "Error occurred while adding entry for domain: " << domain << std::endl;
+        LOG_ERROR("Failed to store entry for domain: {}", domain);
         return EXIT_FAILURE;
     }
 
+    LOG_INFO("Successfully added entry for domain: {}", domain);
     std::cout << "Added entry for domain: " << domain << std::endl;
 
     return EXIT_SUCCESS;
 }
 
 int handleGet(const std::string& domain, const std::string& username_raw) {
+    LOG_INFO("Fetching password entry for domain: {}", domain);
+
     Database db;
     SecureBuffer key;
 
     {
         SecureBuffer master_password = readMasterPassword();
         key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+        LOG_DEBUG("Derived encryption key for handleGet()");
     }
 
     SecureBuffer username;
@@ -48,40 +56,45 @@ int handleGet(const std::string& domain, const std::string& username_raw) {
 
     SecureBuffer password;
     if (!db.fetch(key, domain, username, password)) {
-        std::cerr << "Error occurred while fetching entry for domain: " << domain << std::endl;
+        LOG_ERROR("Failed to fetch entry for domain: {}", domain);
         return EXIT_FAILURE;
     }
 
     if (!password.copyToClipboard()) {
-        std::cerr << "Error occurred while copying a password to clipboard" << std::endl;
+        LOG_ERROR("Failed to copy password to clipboard for domain: {}", domain);
         return EXIT_FAILURE;
     }
 
+    LOG_INFO("Password for user copied to clipboard for domain: {}", domain);
     std::cout << "Password for " << username << " on " << domain << " copied to clipboard" << std::endl;
 
     return EXIT_SUCCESS;
 }
 
 int handleList(bool show_usernames) {
+    LOG_INFO("Listing all entries; show usernames: {}", show_usernames);
+
     Database db;
     SecureBuffer key;
 
     if (show_usernames) {
         SecureBuffer master_password = readMasterPassword();
         key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+        LOG_DEBUG("Derived encryption key for handleList()");
     }
 
     std::vector<Database::Entry> entries;
     if (!db.fetchAll(entries)) {
-        std::cerr << "Error occured while fetching all entries from database" << std::endl;
+        LOG_ERROR("Failed to fetch all entries from database");
         return EXIT_FAILURE;
     }
 
     if (entries.empty()) {
-        std::cout << "Database is empty, no entries found" << std::endl;
+        LOG_WARN("Database is empty, no entries found");
         return EXIT_SUCCESS;
     }
 
+    LOG_INFO("Entries count: {}", entries.size());
     std::cout << std::endl << "Entries found:" << std::endl;
 
     for (const auto& [domain, encrypted_username, _] : entries) {
@@ -103,12 +116,15 @@ int handleList(bool show_usernames) {
 }
 
 int handleRemove(const std::string& domain, const std::string& username_raw) {
+    LOG_INFO("Removing entry for domain: {}", domain);
+
     Database db;
     SecureBuffer key;
 
     {
         SecureBuffer master_password = readMasterPassword();
         key = crypto::deriveEncryptionKey(master_password, db.getSalt());
+        LOG_DEBUG("Derived encryption key for handleRemove()");
     }
 
     SecureBuffer username;
@@ -124,15 +140,17 @@ int handleRemove(const std::string& domain, const std::string& username_raw) {
     std::cin >> confirmation;
 
     if (confirmation != 'y' && confirmation != 'Y') {
+        LOG_INFO("User aborted removal of entry for domain: {}", domain);
         std::cout << "Aborted" << std::endl;
         return EXIT_FAILURE;
     }
 
     if (!db.remove(key, domain, username)) {
-        std::cerr << "Failed to remove entry for domain: " << domain << std::endl;
+        LOG_ERROR("Failed to remove entry for domain: {}", domain);
         return EXIT_FAILURE;
     }
 
+    LOG_INFO("Successfully removed entry for domain: {}", domain);
     std::cout << "Entry for " << username << " on "
               << domain << " successfully removed." << std::endl;
 
@@ -140,6 +158,7 @@ int handleRemove(const std::string& domain, const std::string& username_raw) {
 }
 
 SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
+    LOG_DEBUG("Prompting user for sensitive input: '{}'", prompt);
     SecureBuffer buffer;
 
     std::cout << prompt << std::flush;
@@ -155,6 +174,7 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
 
     ssize_t bytes_read = readInput();
     if (bytes_read <= 0) {
+        LOG_ERROR("Failed to read sensitive input from CLI");
         throw std::runtime_error("Aborted: failed to read from the CLI");
     }
 
@@ -169,17 +189,22 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
 
     buffer.resize(len);
 
+    LOG_DEBUG("Sensitive input read successfully (length {})", len);
     return buffer;
 }
 
 SecureBuffer readMasterPassword() {
+    LOG_INFO("Requesting master password from user");
+
     SecureBuffer master_password = readSensitiveInput("Enter master password: ");
     SecureBuffer verification = readSensitiveInput("Confirm master password: ");
 
     if (master_password != verification) {
+        LOG_ERROR("Master password confirmation failed");
         throw std::runtime_error("Aborted: passwords do not match");
     }
 
+    LOG_INFO("Master password confirmed successfully");
     return master_password;
 }
 

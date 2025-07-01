@@ -56,10 +56,18 @@ FetchContent_MakeAvailable(clip)
 target_include_directories(vaulty PRIVATE ${clip_SOURCE_DIR})
 target_link_libraries(vaulty PRIVATE clip)
 
+# spdlog
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.15.3
+)
+FetchContent_MakeAvailable(spdlog)
+target_link_libraries(vaulty PRIVATE spdlog::spdlog)
+
 # Use GoogleTest framework for testing
 enable_testing()
 
-include(FetchContent)
 FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
