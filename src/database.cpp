@@ -50,9 +50,9 @@ public:
     }
 
     bool store(const SecureBuffer& key, const Entry& entry);
-    bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
+    bool fetch(const SecureBuffer& key, Entry& entry);
     bool fetchAll(std::vector<Entry>& entries_out);
-    bool remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username);
+    bool remove(const SecureBuffer& key, const Entry& entry);
 
 private:
     sqlite3* db_;
@@ -99,24 +99,25 @@ bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
     return success;
 }
 
-bool Database::Impl::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
-    LOG_INFO("Fetching password for domain '{}'", domain);
+bool Database::Impl::fetch(const SecureBuffer& key, Entry& entry) {
+    LOG_INFO("Fetching password for domain '{}'", entry.domain);
 
-    std::vector<Entry> entries;
-    if (!fetchAllByDomain(domain, entries)) {
+    std::vector<Entry> db_entries;
+    if (!fetchAllByDomain(entry.domain, db_entries)) {
         return false;
     }
 
-    for (const auto& entry : entries) {
-        SecureBuffer decrypted_username = crypto::decrypt(key, entry.username);
-        if (decrypted_username == username) {
-            password_out = crypto::decrypt(key, entry.password);
-            LOG_INFO("Password fetched for domain '{}'", domain);
+    for (auto& db_entry : db_entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, db_entry.username);
+        if (decrypted_username == entry.username) {
+            SecureBuffer decrypted_password = crypto::decrypt(key, db_entry.password);
+            entry.password = std::move(decrypted_password);
+            LOG_INFO("Password fetched for domain '{}'", entry.domain);
             return true;
         }
     }
 
-    LOG_WARN("No matching username found for domain '{}'", domain);
+    LOG_WARN("No matching username found for domain '{}'", entry.domain);
     return false;
 }
 
@@ -131,7 +132,7 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
         return false;
     }
 
-    std::vector<Entry> entries;
+    std::vector<Entry> db_entries;
     bool done = false;
     while (!done) {
         int ret = sqlite3_step(stmt);
@@ -149,7 +150,7 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
                 SecureBuffer encrypted_username(username_blob, username_size);
                 SecureBuffer encrypted_password(password_blob, password_size);
 
-                entries.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
+                db_entries.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
             }
             case SQLITE_DONE: {
                 done = true;
@@ -165,24 +166,24 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
 
     sqlite3_finalize(stmt);
 
-    LOG_INFO("Fetched {} entries from database", entries.size());
+    LOG_INFO("Fetched {} entries from database", db_entries.size());
 
-    entries_out = std::move(entries);
+    entries_out = std::move(db_entries);
     return true;
 }
 
-bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username) {
-    LOG_INFO("Removing entry for domain '{}'", domain);
+bool Database::Impl::remove(const SecureBuffer& key, const Entry& entry) {
+    LOG_INFO("Removing entry for domain '{}'", entry.domain);
 
-    std::vector<Entry> entries;
-    if (!fetchAllByDomain(domain, entries)) {
+    std::vector<Entry> db_entries;
+    if (!fetchAllByDomain(entry.domain, db_entries)) {
         return false;
     }
 
-    for (const auto& entry : entries) {
-        SecureBuffer decrypted_username = crypto::decrypt(key, entry.username);
+    for (const auto& db_entry : db_entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, db_entry.username);
 
-        if (decrypted_username == username) {
+        if (decrypted_username == entry.username) {
             const char* sql = "DELETE FROM passwords WHERE domain = ? AND username = ?";
 
             sqlite3_stmt* stmt;
@@ -191,8 +192,8 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
                 return false;
             }
 
-            if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
-                sqlite3_bind_blob(stmt, 2, entry.username.data(), static_cast<int>(entry.username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+            if (sqlite3_bind_text(stmt, 1, entry.domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
+                sqlite3_bind_blob(stmt, 2, db_entry.username.data(), static_cast<int>(db_entry.username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
                 LOG_ERROR("Failed to bind parameters for removal");
                 sqlite3_finalize(stmt);
                 return false;
@@ -202,16 +203,16 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
             sqlite3_finalize(stmt);
 
             if (success) {
-                LOG_INFO("Successfully removed entry for domain '{}'", domain);
+                LOG_INFO("Successfully removed entry for domain '{}'", entry.domain);
             } else {
-                LOG_ERROR("Failed to execute removal for domain '{}'", domain);
+                LOG_ERROR("Failed to execute removal for domain '{}'", entry.domain);
             }
 
             return success;
         }
     }
 
-    LOG_WARN("No matching entry found to remove for domain '{}'", domain);
+    LOG_WARN("No matching entry found to remove for domain '{}'", entry.domain);
     return false;
 }
 
@@ -422,16 +423,16 @@ bool Database::store(const SecureBuffer& key, const Entry& entry) {
     return impl_->store(key, entry);
 }
 
-bool Database::fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out) {
-    return impl_->fetch(key, domain, username, password_out);
+bool Database::fetch(const SecureBuffer& key, Entry& entry) {
+    return impl_->fetch(key, entry);
 }
 
 bool Database::fetchAll(std::vector<Entry>& entries_out) {
     return impl_->fetchAll(entries_out);
 }
 
-bool Database::remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username) {
-    return impl_->remove(key, domain, username);
+bool Database::remove(const SecureBuffer& key, const Entry& entry) {
+    return impl_->remove(key, entry);
 }
 
 } /* namespace vaulty */

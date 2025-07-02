@@ -30,6 +30,9 @@ public:
         std::string domain;
         SecureBuffer username;
         SecureBuffer password;
+
+        Entry(const std::string& d, SecureBuffer&& u, SecureBuffer&& p = SecureBuffer())
+            : domain(d), username(std::move(u)), password(std::move(p)) {}
     };
 
 public:
@@ -45,9 +48,9 @@ public:
     const std::array<unsigned char, crypto::kSaltSize>& getSalt() const;
 
     bool store(const SecureBuffer& key, const Entry& entry);
-    bool fetch(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username, SecureBuffer& password_out);
+    bool fetch(const SecureBuffer& key, Entry& entry);
     bool fetchAll(std::vector<Entry>& entries_out);
-    bool remove(const SecureBuffer& key, const std::string& domain, const SecureBuffer& username);
+    bool remove(const SecureBuffer& key, const Entry& entry);
 
 private:
     static constexpr std::string_view kDefaultPath = "passwords.db";
