@@ -9,13 +9,13 @@
 
 namespace vaulty::crypto {
 
-SecureBuffer deriveEncryptionKey(const SecureBuffer& masterPassword, const std::array<unsigned char, kSaltSize>& salt) {
+SecureBuffer deriveEncryptionKey(const SecureBuffer& master_password, const std::array<unsigned char, kSaltSize>& salt) {
     LOG_INFO("Deriving encryption key using PBKDF2-HMAC-SHA512");
 
     SecureBuffer key(kKeySize);
 
-    if (!PKCS5_PBKDF2_HMAC(reinterpret_cast<const char*>(masterPassword.data()),
-                           static_cast<int>(masterPassword.size()),
+    if (!PKCS5_PBKDF2_HMAC(reinterpret_cast<const char*>(master_password.data()),
+                           static_cast<int>(master_password.size()),
                            salt.data(),
                            static_cast<int>(kSaltSize),
                            static_cast<int>(kIterationsCount),
