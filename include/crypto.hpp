@@ -7,6 +7,7 @@
 /*
  * @namespace vaulty::crypto
  * @brief Cryptographic utilities for key derivation and AEAD encryption
+ * @throws std::runtime_error for all cryptographic failures
  */
 namespace vaulty::crypto {
 

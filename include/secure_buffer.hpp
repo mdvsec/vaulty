@@ -23,6 +23,8 @@ namespace vaulty {
  * comparison and optional clipboard export with data sanitization.
  *
  * @throws std::runtime_error if memory allocation fails
+ * @throws std::invalid_argument if resizing to a larger size is attempted
+ * @throws std::out_of_range if index is out of range in operator[]
  */
 class SecureBuffer {
 public:
@@ -80,7 +82,7 @@ public:
 
     unsigned char& operator[](size_t i) {
         if (i >= size_) {
-            throw std::runtime_error("Index out of bounds");
+            throw std::out_of_range("Index out of bounds");
         }
 
         return data_[i];
@@ -88,7 +90,7 @@ public:
 
     const unsigned char& operator[](size_t i) const {
         if (i >= size_) {
-            throw std::runtime_error("Index out of bounds");
+            throw std::out_of_range("Index out of bounds");
         }
 
         return data_[i];
