@@ -218,55 +218,19 @@ bool Database::Impl::remove(const SecureBuffer& key, const std::string& domain, 
 bool Database::Impl::fetchAllByDomain(const std::string& domain, std::vector<Entry>& entries_out) {
     LOG_INFO("Fetching all entries by domain '{}'", domain);
 
-    const char* sql = "SELECT username, password FROM passwords WHERE domain = ?";
-
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR("Failed to prepare statement: {}", sqlite3_errmsg(db_));
+    std::vector<Entry> all_entries;
+    if (!fetchAll(all_entries)) {
         return false;
     }
 
-    if (sqlite3_bind_text(stmt, 1, domain.c_str(), -1, SQLITE_STATIC) != SQLITE_OK) {
-        LOG_ERROR("Failed to bind domain parameter");
-        sqlite3_finalize(stmt);
-        return false;
-    }
+    all_entries.erase(
+        std::remove_if(all_entries.begin(), all_entries.end(),
+                       [&domain](const Entry& entry) { return entry.domain != domain; }),
+        all_entries.end()
+    );
+    entries_out = std::move(all_entries);
 
-    std::vector<Entry> results;
-    bool done = false;
-    while (!done) {
-        int ret = sqlite3_step(stmt);
-        switch (ret) {
-            case SQLITE_ROW: {
-                const void* username_blob = sqlite3_column_blob(stmt, 0);
-                int username_size = sqlite3_column_bytes(stmt, 0);
-
-                const void* password_blob = sqlite3_column_blob(stmt, 1);
-                int password_size = sqlite3_column_bytes(stmt, 1);
-
-                SecureBuffer encrypted_username(username_blob, username_size);
-                SecureBuffer encrypted_password(password_blob, password_size);
-
-                results.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
-                break;
-            }
-            case SQLITE_DONE: {
-                done = true;
-                break;
-            }
-            default: {
-                LOG_ERROR("Error executing fetchAllByDomain query");
-                sqlite3_finalize(stmt);
-                return false;
-            }
-        }
-    }
-
-    sqlite3_finalize(stmt);
-
-    LOG_INFO("Fetched {} entries for domain '{}'", results.size(), domain);
-
-    entries_out = std::move(results);
+    LOG_INFO("Fetched {} entries for domain '{}'", entries_out.size(), domain);
 
     return true;
 }
