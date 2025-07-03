@@ -32,6 +32,10 @@ SecureBuffer deriveEncryptionKey(const SecureBuffer& master_password, const std:
 SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext) {
     LOG_INFO("Starting encryption");
 
+    if (key.size() != kKeySize) {
+        throw std::runtime_error("Invalid key size");
+    }
+
     SecureBuffer iv(kIvSize);
     if (RAND_bytes(iv.data(), iv.size()) != 1) {
         throw std::runtime_error("Failed to generate IV");
@@ -83,6 +87,10 @@ SecureBuffer encrypt(const SecureBuffer& key, const SecureBuffer& plaintext) {
 
 SecureBuffer decrypt(const SecureBuffer& key, const SecureBuffer& blob) {
     LOG_INFO("Starting decryption");
+
+    if (key.size() != kKeySize || blob.size() < kIvSize + kTagSize) {
+        throw std::runtime_error("Invalid input sizes");
+    }
 
     int ciphertext_len = blob.size() - kIvSize - kTagSize;
     int len = 0;

@@ -15,8 +15,8 @@ TEST(SecureBufferTest, ConstructsWithDefaultSize) {
 }
 
 TEST(SecureBufferTest, ConstructsFromTwoBuffers) {
-    SecureBuffer a(std::string("foo"));
-    SecureBuffer b(std::string("bar"));
+    SecureBuffer a("foo");
+    SecureBuffer b("bar");
     SecureBuffer result(a, b);
 
     std::string expected = "foobar";
@@ -59,7 +59,7 @@ TEST(SecureBufferTest, ConstructsFromRawPointer) {
 }
 
 TEST(SecureBufferTest, MoveConstructorWorks) {
-    SecureBuffer original(std::string("secret"));
+    SecureBuffer original("secret");
     auto original_ptr = original.data();
 
     SecureBuffer moved(std::move(original));
@@ -70,10 +70,10 @@ TEST(SecureBufferTest, MoveConstructorWorks) {
 }
 
 TEST(SecureBufferTest, MoveAssignmentWorks) {
-    SecureBuffer source(std::string("secret"));
+    SecureBuffer source("secret");
     auto source_ptr = source.data();
 
-    SecureBuffer dest(std::string("temp"));
+    SecureBuffer dest("temp");
     dest = std::move(source);
 
     EXPECT_EQ(dest.data(), source_ptr);
@@ -89,9 +89,9 @@ TEST(SecureBufferTest, ThrowsOnOutOfRangeAccess) {
 }
 
 TEST(SecureBufferTest, EqualityAndInequality) {
-    SecureBuffer a(std::string("secret"));
-    SecureBuffer b(std::string("secret"));
-    SecureBuffer c(std::string("not a secret"));
+    SecureBuffer a("secret");
+    SecureBuffer b("secret");
+    SecureBuffer c("not a secret");
 
     EXPECT_TRUE(a == b);
     EXPECT_FALSE(a == c);
@@ -99,8 +99,8 @@ TEST(SecureBufferTest, EqualityAndInequality) {
 }
 
 TEST(SecureBufferTest, ConcatenationWorks) {
-    SecureBuffer a(std::string("foo"));
-    SecureBuffer b(std::string("bar"));
+    SecureBuffer a("foo");
+    SecureBuffer b("bar");
     
     auto result = a + b;
 
@@ -112,7 +112,7 @@ TEST(SecureBufferTest, ConcatenationWorks) {
 TEST(SecureBufferTest, ConcatenatesEmptyBuffers) {
     SecureBuffer empty1(0);
     SecureBuffer empty2(0);
-    SecureBuffer data(std::string("secret"));
+    SecureBuffer data("secret");
 
     auto result1 = empty1 + empty2;
     EXPECT_EQ(result1.size(), 0);
@@ -127,7 +127,7 @@ TEST(SecureBufferTest, ConcatenatesEmptyBuffers) {
 }
 
 TEST(SecureBufferTest, CopyToClipboard) {
-    SecureBuffer buffer(std::string("secret"));
+    SecureBuffer buffer("secret");
     EXPECT_TRUE(buffer.copyToClipboard());
 
     std::string clipboard_data;
@@ -156,7 +156,7 @@ TEST(SecureBufferTest, ResizeToLargerSizeThrows) {
 }
 
 TEST(SecureBufferTest, OutputDefaultFormat) {
-    SecureBuffer buffer(std::string("foobar"));
+    SecureBuffer buffer("foobar");
     std::ostringstream ss;
     ss << buffer;
 
@@ -164,7 +164,7 @@ TEST(SecureBufferTest, OutputDefaultFormat) {
 }
 
 TEST(SecureBufferTest, OutputHexFormat) {
-    SecureBuffer buffer(std::string("foobar"));
+    SecureBuffer buffer("foobar");
     std::ostringstream ss;
     ss << std::hex << buffer;
 
