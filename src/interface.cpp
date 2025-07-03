@@ -29,7 +29,6 @@ int handleAdd(const std::string& domain) {
         return EXIT_FAILURE;
     }
 
-    LOG_INFO("Successfully added entry for domain: {}", domain);
     std::cout << "Added entry for domain: " << domain << std::endl;
 
     return EXIT_SUCCESS;

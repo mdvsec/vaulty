@@ -151,6 +151,7 @@ bool Database::Impl::fetchAll(std::vector<Entry>& entries_out) {
                 SecureBuffer encrypted_password(password_blob, password_size);
 
                 db_entries.emplace_back(Entry{domain, std::move(encrypted_username), std::move(encrypted_password)});
+                break;
             }
             case SQLITE_DONE: {
                 done = true;
