@@ -2,7 +2,7 @@
 `vaulty` is a command-line password manager for UNIX-like systems (Linux, macOS), focused on security and simplicity. It encrypts credentials with AEAD using strong key derivation, ensures sensitive data remains in memory only as long as necessary, and guarantees plaintext never hits the disk during storage.
 
 ## Features
-- **Memory protection** — passwords stored in memory protected from swapping and core dumps (via OpenSSL secure heap)
+- **Memory protection** — sensitive data stored in memory protected from swapping and core dumps (via OpenSSL secure heap)
 - **Strong encryption** — AEAD with per-record keys derived via PBKDF2 (HMAC-SHA512, 210k iterations, 64-byte salt)
 - **Lightweight storage** — encrypted credentials persisted in a local SQLite database
 - **Minimal dependencies** — OpenSSL, SQLite, spdlog, clip
