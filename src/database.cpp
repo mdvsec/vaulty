@@ -107,10 +107,10 @@ bool Database::Impl::fetch(const SecureBuffer& key, Entry& entry) {
         return false;
     }
 
-    for (auto& db_entry : db_entries) {
-        SecureBuffer decrypted_username = crypto::decrypt(key, db_entry.username);
+    for (auto& [_, encrypted_username, encrypted_password] : db_entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, encrypted_username);
         if (decrypted_username == entry.username) {
-            SecureBuffer decrypted_password = crypto::decrypt(key, db_entry.password);
+            SecureBuffer decrypted_password = crypto::decrypt(key, encrypted_password);
             entry.password = std::move(decrypted_password);
             LOG_INFO("Password fetched for domain '{}'", entry.domain);
             return true;
@@ -180,8 +180,8 @@ bool Database::Impl::remove(const SecureBuffer& key, const Entry& entry) {
         return false;
     }
 
-    for (const auto& db_entry : db_entries) {
-        SecureBuffer decrypted_username = crypto::decrypt(key, db_entry.username);
+    for (const auto& [_, encrypted_username, encrypted_password] : db_entries) {
+        SecureBuffer decrypted_username = crypto::decrypt(key, encrypted_username);
 
         if (decrypted_username == entry.username) {
             const char* sql = "DELETE FROM passwords WHERE domain = ? AND username = ?";
@@ -193,7 +193,7 @@ bool Database::Impl::remove(const SecureBuffer& key, const Entry& entry) {
             }
 
             if (sqlite3_bind_text(stmt, 1, entry.domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
-                sqlite3_bind_blob(stmt, 2, db_entry.username.data(), static_cast<int>(db_entry.username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+                sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
                 LOG_ERROR("Failed to bind parameters for removal");
                 sqlite3_finalize(stmt);
                 return false;
@@ -219,17 +219,17 @@ bool Database::Impl::remove(const SecureBuffer& key, const Entry& entry) {
 bool Database::Impl::fetchAllByDomain(const std::string& domain, std::vector<Entry>& entries_out) {
     LOG_INFO("Fetching all entries by domain '{}'", domain);
 
-    std::vector<Entry> all_entries;
-    if (!fetchAll(all_entries)) {
+    std::vector<Entry> db_entries;
+    if (!fetchAll(db_entries)) {
         return false;
     }
 
-    all_entries.erase(
-        std::remove_if(all_entries.begin(), all_entries.end(),
+    db_entries.erase(
+        std::remove_if(db_entries.begin(), db_entries.end(),
                        [&domain](const Entry& entry) { return entry.domain != domain; }),
-        all_entries.end()
+        db_entries.end()
     );
-    entries_out = std::move(all_entries);
+    entries_out = std::move(db_entries);
 
     LOG_INFO("Fetched {} entries for domain '{}'", entries_out.size(), domain);
 
