@@ -9,6 +9,7 @@ using namespace vaulty;
 
 TEST(SecureBufferTest, ConstructsWithDefaultSize) {
     SecureBuffer buffer;
+
     EXPECT_EQ(buffer.size(), SecureBuffer::kMaxPasswordLength);
     EXPECT_NE(buffer.data(), nullptr);
 }
@@ -30,6 +31,18 @@ TEST(SecureBufferTest, ConstructsFromStringCleansesInput) {
     SecureBuffer buffer(input);
 
     EXPECT_EQ(std::memcmp(buffer.data(), original.data(), original.size()), 0);
+    for (char& c : input) {
+        EXPECT_EQ(c, 0);
+    }
+}
+
+TEST(SecureBufferTest, ConstructsFromTempStringCleansesInput) {
+    std::string input = "secret";
+    std::string input_copy = input;
+
+    SecureBuffer buffer(std::move(input));
+
+    EXPECT_EQ(std::memcmp(buffer.data(), input_copy.data(), input_copy.size()), 0);
     for (char& c : input) {
         EXPECT_EQ(c, 0);
     }
@@ -138,6 +151,7 @@ TEST(SecureBufferTest, ResizeToSmallerSizeAllowedCleansesMemory) {
 
 TEST(SecureBufferTest, ResizeToLargerSizeThrows) {
     SecureBuffer buffer(4);
+
     EXPECT_THROW(buffer.resize(16), std::invalid_argument);
 }
 
