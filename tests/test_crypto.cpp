@@ -9,16 +9,14 @@ using namespace vaulty::crypto;
 
 class CryptoTest : public ::testing::Test {
 protected:
-    SecureBuffer password;
     std::array<unsigned char, kSaltSize> salt{};
     SecureBuffer key;
 
     void SetUp() override {
-        password = SecureBuffer("secret");
         for (size_t i = 0; i < salt.size(); ++i) {
             salt[i] = static_cast<unsigned char>(i);
         }
-        key = deriveEncryptionKey(password, salt);
+        key = deriveEncryptionKey(SecureBuffer("secret"), salt);
     }
 };
 
