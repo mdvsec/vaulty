@@ -9,10 +9,6 @@ project(vaulty CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
-add_executable(vaulty ${SOURCES})
-target_include_directories(vaulty PRIVATE ${PROJECT_SOURCE_DIR}/include)
-
 # Set default build type to Release if not specified
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (Debug, Release)" FORCE)
@@ -20,19 +16,16 @@ endif()
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_definitions(DEBUG_MODE)
-    target_compile_options(vaulty PRIVATE -Wall -Wextra -pedantic -g -O0)
+    set(COMMON_COMPILE_OPTIONS -Wall -Wextra -pedantic -g -O0)
 else()
-    target_compile_options(vaulty PRIVATE -Wall -Wextra -pedantic -O3)
+    set(COMMON_COMPILE_OPTIONS -Wall -Wextra -pedantic -O3)
 endif()
 
 # OpenSSL
 find_package(OpenSSL REQUIRED)
-target_include_directories(vaulty PRIVATE ${OPENSSL_INCLUDE_DIR})
-target_link_libraries(vaulty PRIVATE OpenSSL::Crypto)
 
 # SQLite3
 find_package(SQLite3 REQUIRED)
-target_link_libraries(vaulty PRIVATE SQLite::SQLite3)
 
 # CLI11
 include(FetchContent)
@@ -42,7 +35,6 @@ FetchContent_Declare(
     GIT_TAG v2.5.0
 )
 FetchContent_MakeAvailable(CLI11)
-target_link_libraries(vaulty PRIVATE CLI11::CLI11)
 
 # clip
 set(CLIP_EXAMPLES OFF CACHE BOOL "Compile clip examples")
@@ -53,8 +45,6 @@ FetchContent_Declare(
     GIT_TAG main
 )
 FetchContent_MakeAvailable(clip)
-target_include_directories(vaulty PRIVATE ${clip_SOURCE_DIR})
-target_link_libraries(vaulty PRIVATE clip)
 
 # spdlog
 FetchContent_Declare(
@@ -63,9 +53,30 @@ FetchContent_Declare(
     GIT_TAG v1.15.3
 )
 FetchContent_MakeAvailable(spdlog)
-target_link_libraries(vaulty PRIVATE spdlog::spdlog)
 
-# Use GoogleTest framework for testing
+# Core
+file(GLOB CORE_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
+add_library(vaulty_core ${CORE_SOURCES})
+
+target_include_directories(vaulty_core PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${OPENSSL_INCLUDE_DIR}
+    ${clip_SOURCE_DIR}
+)
+target_link_libraries(vaulty_core PUBLIC
+    OpenSSL::Crypto
+    SQLite::SQLite3
+    CLI11::CLI11
+    clip
+    spdlog::spdlog
+)
+target_compile_options(vaulty_core PRIVATE ${COMMON_COMPILE_OPTIONS})
+
+# Main executable
+add_executable(vaulty src/main.cpp)
+target_link_libraries(vaulty PRIVATE vaulty_core)
+
+# GoogleTest
 enable_testing()
 
 FetchContent_Declare(
@@ -77,14 +88,16 @@ FetchContent_MakeAvailable(googletest)
 
 file(GLOB TEST_SOURCES "${PROJECT_SOURCE_DIR}/tests/*.cpp")
 if (TEST_SOURCES)
-    set(SOURCES_COPY ${SOURCES})
-    list(REMOVE_ITEM SOURCES_COPY "${PROJECT_SOURCE_DIR}/src/main.cpp")
+    list(REMOVE_ITEM CORE_SOURCES "${PROJECT_SOURCE_DIR}/src/main.cpp")
 
-    add_executable(vaulty_tests ${TEST_SOURCES} ${SOURCES_COPY})
+    add_executable(vaulty_tests ${TEST_SOURCES} ${CORE_SOURCES})
 
     target_compile_definitions(vaulty_tests PRIVATE UNIT_TESTING)
-
-    target_link_libraries(vaulty_tests GTest::gtest_main)
+    target_compile_options(vaulty_tests PRIVATE ${COMMON_COMPILE_OPTIONS})
+    target_link_libraries(vaulty_tests PRIVATE
+        GTest::gtest_main
+        vaulty_core
+    )
 
     include(GoogleTest)
     gtest_discover_tests(vaulty_tests)
