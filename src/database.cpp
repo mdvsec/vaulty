@@ -273,8 +273,7 @@ void Database::Impl::createTables() {
 
     const char* sql_params = "CREATE TABLE IF NOT EXISTS kdf_params ("
                              "id INTEGER PRIMARY KEY CHECK(id = 1),"
-                             "salt BLOB NOT NULL,"
-                             "iterations INTEGER NOT NULL)";
+                             "salt BLOB NOT NULL)";
     executeSQL(sql_passwords);
     executeSQL(sql_params);
 
@@ -289,7 +288,7 @@ void Database::Impl::initSecurityParameters() {
     }
 
     sqlite3_stmt* stmt;
-    const char* sql = "INSERT INTO kdf_params (id, salt, iterations) VALUES (1, ?, ?)";
+    const char* sql = "INSERT INTO kdf_params (id, salt) VALUES (1, ?)";
     if (sqlite3_prepare_v2(db_, sql,
                            -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR("Failed to prepare statement for inserting KDF salt: {}", sqlite3_errmsg(db_));
@@ -298,9 +297,7 @@ void Database::Impl::initSecurityParameters() {
 
     if (sqlite3_bind_blob(stmt, 1, kdf_salt_.data(),
                           static_cast<int>(kdf_salt_.size()),
-                          SQLITE_STATIC) != SQLITE_OK ||
-        sqlite3_bind_int(stmt, 2,
-                         static_cast<int>(crypto::kIterationsCount)) != SQLITE_OK) {
+                          SQLITE_STATIC) != SQLITE_OK) {
         LOG_ERROR("Failed to bind KDF salt parameter");
         throw std::runtime_error("Failed to bind statement parameters");
     }
@@ -348,24 +345,23 @@ void Database::Impl::verifyDatabaseIntegrity() {
         throw std::runtime_error("Required tables missing");
     }
 
-    LOG_INFO("Fetching KDF parameters");
+    LOG_INFO("Fetching KDF salt parameter");
     sqlite3_stmt* stmt;
-    const char* sql = "SELECT salt, iterations FROM kdf_params WHERE id=1";
+    const char* sql = "SELECT salt FROM kdf_params WHERE id=1";
     if (sqlite3_prepare_v2(db_, sql, -1,
                            &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR("Failed to prepare KDF parameters query");
-        throw std::runtime_error("Failed to prepare KDF parameters query");
+        LOG_ERROR("Failed to prepare KDF salt parameter query");
+        throw std::runtime_error("Failed to prepare KDF salt parameter query");
     }
 
     if (sqlite3_step(stmt) != SQLITE_ROW) {
         sqlite3_finalize(stmt);
-        LOG_ERROR("KDF parameters not found");
-        throw std::runtime_error("KDF parameters not found");
+        LOG_ERROR("KDF salt parameter not found");
+        throw std::runtime_error("KDF salt parameter not found");
     }
 
     const void* salt_blob = sqlite3_column_blob(stmt, 0);
     int salt_size = sqlite3_column_bytes(stmt, 0);
-    int iterations = sqlite3_column_int(stmt, 1);
 
     if (!salt_blob || salt_size != static_cast<int>(crypto::kSaltSize)) {
         sqlite3_finalize(stmt);
@@ -374,13 +370,7 @@ void Database::Impl::verifyDatabaseIntegrity() {
     }
 
     std::memcpy(kdf_salt_.data(), salt_blob, crypto::kSaltSize);
-    LOG_INFO("KDF salt loaded, iterations: {}", iterations);
-
-    if (iterations < static_cast<int>(crypto::kIterationsCount)) {
-        sqlite3_finalize(stmt);
-        LOG_ERROR("Iterations count too low in KDF parameters: {}", iterations);
-        throw std::runtime_error("Iterations count too low in KDF parameters");
-    }
+    LOG_INFO("KDF salt loaded");
 
     sqlite3_finalize(stmt);
 
