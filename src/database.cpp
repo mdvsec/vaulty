@@ -195,7 +195,7 @@ bool Database::Impl::remove(const SecureBuffer& key, const Entry& entry) {
 
             if (sqlite3_bind_text(stmt, 1, entry.domain.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK ||
                 sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
-                LOG_ERROR("Failed to bind parameters for removal");
+                LOG_ERROR("Failed to bind parameters for removal: {}", sqlite3_errmsg(db_));
                 sqlite3_finalize(stmt);
                 return false;
             }
@@ -284,28 +284,25 @@ void Database::Impl::initSecurityParameters() {
     LOG_INFO("Initializing security parameters");
 
     if (RAND_bytes(kdf_salt_.data(), kdf_salt_.size()) != 1) {
-        throw std::runtime_error("Failed to generate salt");
+        throw std::runtime_error("Failed to generate KDF salt");
     }
 
     sqlite3_stmt* stmt;
     const char* sql = "INSERT INTO kdf_params (id, salt) VALUES (1, ?)";
     if (sqlite3_prepare_v2(db_, sql,
                            -1, &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR("Failed to prepare statement for inserting KDF salt: {}", sqlite3_errmsg(db_));
-        throw std::runtime_error("Failed to prepare statement");
+        throw std::runtime_error("Failed to prepare statement for inserting KDF salt: " + std::string(sqlite3_errmsg(db_)));
     }
 
     if (sqlite3_bind_blob(stmt, 1, kdf_salt_.data(),
                           static_cast<int>(kdf_salt_.size()),
                           SQLITE_STATIC) != SQLITE_OK) {
-        LOG_ERROR("Failed to bind KDF salt parameter");
-        throw std::runtime_error("Failed to bind statement parameters");
+        throw std::runtime_error("Failed to bind KDF salt parameter: " + std::string(sqlite3_errmsg(db_)));
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        LOG_ERROR("Failed to insert KDF salt");
         sqlite3_finalize(stmt);
-        throw std::runtime_error("Failed to insert KDF parameters");
+        throw std::runtime_error("Failed to insert KDF salt: " + std::string(sqlite3_errmsg(db_)));
     }
 
     sqlite3_finalize(stmt);
@@ -323,14 +320,12 @@ void Database::Impl::verifyDatabaseIntegrity() {
         const char* sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
         if (sqlite3_prepare_v2(db_, sql, -1,
                                &stmt, nullptr) != SQLITE_OK) {
-            LOG_ERROR("Failed to prepare table existence check for '{}'", table);
-            throw std::runtime_error("Failed to prepare table existence check");
+            throw std::runtime_error("Failed to prepare table existence check: " + std::string(sqlite3_errmsg(db_)));
         }
 
         if (sqlite3_bind_text(stmt, 1, table,
                               -1, SQLITE_STATIC) != SQLITE_OK) {
-            LOG_ERROR("Failed to bind parameters for table '{}'", table);
-            throw std::runtime_error("Failed to bind table existence parameters");
+            throw std::runtime_error("Failed to bind parameters for table: " + std::string(sqlite3_errmsg(db_)));
         }
 
         bool exists = (sqlite3_step(stmt) == SQLITE_ROW);
@@ -341,7 +336,6 @@ void Database::Impl::verifyDatabaseIntegrity() {
     };
 
     if (!checkTable("passwords") || !checkTable("kdf_params")) {
-        LOG_ERROR("Required tables missing");
         throw std::runtime_error("Required tables missing");
     }
 
@@ -350,14 +344,12 @@ void Database::Impl::verifyDatabaseIntegrity() {
     const char* sql = "SELECT salt FROM kdf_params WHERE id=1";
     if (sqlite3_prepare_v2(db_, sql, -1,
                            &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR("Failed to prepare KDF salt parameter query");
-        throw std::runtime_error("Failed to prepare KDF salt parameter query");
+        throw std::runtime_error("Failed to prepare KDF salt parameter query: " + std::string(sqlite3_errmsg(db_)));
     }
 
     if (sqlite3_step(stmt) != SQLITE_ROW) {
         sqlite3_finalize(stmt);
-        LOG_ERROR("KDF salt parameter not found");
-        throw std::runtime_error("KDF salt parameter not found");
+        throw std::runtime_error("KDF salt parameter not found: " + std::string(sqlite3_errmsg(db_)));
     }
 
     const void* salt_blob = sqlite3_column_blob(stmt, 0);
@@ -365,7 +357,6 @@ void Database::Impl::verifyDatabaseIntegrity() {
 
     if (!salt_blob || salt_size != static_cast<int>(crypto::kSaltSize)) {
         sqlite3_finalize(stmt);
-        LOG_ERROR("Invalid salt in KDF parameters");
         throw std::runtime_error("Invalid salt in KDF parameters");
     }
 
@@ -378,21 +369,18 @@ void Database::Impl::verifyDatabaseIntegrity() {
     const char* integrity_sql = "PRAGMA integrity_check;";
     if (sqlite3_prepare_v2(db_, integrity_sql, -1,
                            &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR("Failed to prepare integrity check query");
-        throw std::runtime_error("Failed to prepare integrity check query");
+        throw std::runtime_error("Failed to prepare integrity check query: " + std::string(sqlite3_errmsg(db_)));
     }
 
     if (sqlite3_step(stmt) != SQLITE_ROW) {
         sqlite3_finalize(stmt);
-        LOG_ERROR("Integrity check query failed");
-        throw std::runtime_error("Integrity check query failed");
+        throw std::runtime_error("Integrity check query failed: " + std::string(sqlite3_errmsg(db_)));
     }
 
     const unsigned char* result = sqlite3_column_text(stmt, 0);
     if (!result ||
         std::string_view(reinterpret_cast<const char*>(result)) != "ok") {
         sqlite3_finalize(stmt);
-        LOG_ERROR("Database integrity check failed");
         throw std::runtime_error("Database integrity check failed");
     }
 
