@@ -30,7 +30,9 @@ public:
         }
 
         termios noecho = original_;
-        noecho.c_lflag &= ~ECHO;
+        noecho.c_lflag &= ~(ECHO | ICANON);
+        noecho.c_cc[VMIN] = 1;
+        noecho.c_cc[VTIME] = 0;
 
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &noecho)) {
             throw std::runtime_error("Failed to set terminal attributes");
