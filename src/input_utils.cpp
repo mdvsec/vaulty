@@ -19,7 +19,11 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
         char c = 0;
         while (len < SecureBuffer::kMaxPasswordLength) {
             ssize_t n = read(STDIN_FILENO, &c, 1);
-            if (n <= 0 || c == '\n') {
+            if (n < 0) {
+                throw std::runtime_error("Failed to read sensitive input from CLI");
+            }
+
+            if (n == 0 || c == '\n') {
                 break;
             }
 
@@ -36,7 +40,7 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
         std::cout << std::endl;
     } else {
         ssize_t bytes_read = read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
-        if (bytes_read <= 0) {
+        if (bytes_read < 0) {
             throw std::runtime_error("Failed to read sensitive input from CLI");
         }
 
