@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <openssl/rand.h>
+#include <sqlite3.h>
 
 #include <crypto.hpp>
 #include <database.hpp>

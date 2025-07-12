@@ -4,9 +4,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
-
-#include <sqlite3.h>
 
 #include <crypto.hpp>
 #include <secure_buffer.hpp>

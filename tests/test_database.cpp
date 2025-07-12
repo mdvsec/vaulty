@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <gtest/gtest.h>
+#include <sqlite3.h>
 
 #include <database.hpp>
 
