@@ -16,7 +16,8 @@ endif()
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_definitions(DEBUG_MODE)
-    set(COMMON_COMPILE_OPTIONS -Wall -Wextra -pedantic -g -O0)
+    set(COMMON_COMPILE_OPTIONS -Wall -Wextra -pedantic -g -O0 -fsanitize=undefined -fno-omit-frame-pointer)
+    set(COMMON_LINK_OPTIONS -fsanitize=undefined)
 else()
     set(COMMON_COMPILE_OPTIONS -Wall -Wextra -pedantic -O3)
 endif()
@@ -71,10 +72,12 @@ target_link_libraries(vaulty_core PUBLIC
     spdlog::spdlog
 )
 target_compile_options(vaulty_core PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_link_options(vaulty_core PRIVATE ${COMMON_LINK_OPTIONS})
 
 # Main executable
 add_executable(vaulty src/main.cpp)
 target_link_libraries(vaulty PRIVATE vaulty_core)
+target_link_options(vaulty PRIVATE ${COMMON_LINK_OPTIONS})
 
 # GoogleTest
 enable_testing()
@@ -98,6 +101,7 @@ if (TEST_SOURCES)
         GTest::gtest_main
         vaulty_core
     )
+    target_link_options(vaulty_tests PRIVATE ${COMMON_LINK_OPTIONS})
 
     include(GoogleTest)
     gtest_discover_tests(vaulty_tests)
