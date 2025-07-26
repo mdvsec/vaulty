@@ -18,8 +18,8 @@ namespace vaulty {
  * @brief Securely allocated memory buffer for sensitive data
  *
  * Allocates memory from OpenSSL's secure heap to protect sensitive data, with
- * automatic cleansing on release. Supports move semantics, constant-time
- * comparison and optional clipboard export with data sanitization.
+ * automatic cleansing on release. Supports move semantics and constant-time
+ * comparison.
  *
  * @throws std::runtime_error if memory allocation fails
  * @throws std::invalid_argument if resizing to a larger size is attempted
