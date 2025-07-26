@@ -85,6 +85,7 @@ bool Database::Impl::store(const SecureBuffer& key, const Entry& entry) {
         sqlite3_bind_blob(stmt, 2, encrypted_username.data(), static_cast<int>(encrypted_username.size()), SQLITE_TRANSIENT) != SQLITE_OK ||
         sqlite3_bind_blob(stmt, 3, encrypted_password.data(), static_cast<int>(encrypted_password.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
         LOG_ERROR("Failed to bind parameters for storing entry");
+        sqlite3_finalize(stmt);
         return false;
     }
 
