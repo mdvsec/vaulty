@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <clip.h>
 #include <openssl/crypto.h>
 #include <sys/mman.h>
 
@@ -118,17 +117,6 @@ public:
 
     SecureBuffer operator+(const SecureBuffer& rhs) {
         return SecureBuffer(*this, rhs);
-    }
-
-    bool copyToClipboard() const {
-        std::string tmp(reinterpret_cast<const char *>(data_), size_);
-        bool result = clip::set_text(tmp);
-
-        if (tmp.size()) {
-            OPENSSL_cleanse(&tmp[0], tmp.size());
-        }
-
-        return result;
     }
 
     unsigned char* data() const {

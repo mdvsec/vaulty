@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <secure_buffer.hpp>
+#include <secure_buffer_writer.hpp>
 
 using namespace vaulty;
 
@@ -128,7 +129,7 @@ TEST(SecureBufferTest, ConcatenatesEmptyBuffers) {
 
 TEST(SecureBufferTest, CopyToClipboard) {
     SecureBuffer buffer("secret");
-    EXPECT_TRUE(buffer.copyToClipboard());
+    EXPECT_TRUE(SecureBufferWriter::copyToClipboard(buffer));
 
     std::string clipboard_data;
     EXPECT_TRUE(clip::get_text(clipboard_data));

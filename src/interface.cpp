@@ -6,6 +6,7 @@
 #include <interface.hpp>
 #include <logger.hpp>
 #include <secure_buffer.hpp>
+#include <secure_buffer_writer.hpp>
 
 namespace vaulty::cli {
 
@@ -60,7 +61,7 @@ int handleGet(const std::string& domain, std::string& username_raw) {
         return EXIT_FAILURE;
     }
 
-    if (!entry.password.copyToClipboard()) {
+    if (!SecureBufferWriter::copyToClipboard(entry.password)) {
         LOG_ERROR("Failed to copy password to clipboard for domain: {}", domain);
         return EXIT_FAILURE;
     }
