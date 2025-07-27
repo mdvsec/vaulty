@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include <input_utils.hpp>
 
@@ -33,13 +34,15 @@ protected:
 
 TEST_F(InputUtilsTest, ReadSensitiveInputWithEcho) {
     setInputData("secret\n");
+    std::ostringstream dummy_output;
 
-    SecureBuffer result = readSensitiveInput("Enter password: ", false);
+    SecureBuffer result = readSensitiveInput("Enter password: ", false, dummy_output);
     EXPECT_EQ(result, SecureBuffer("secret"));
 }
 
 TEST_F(InputUtilsTest, ReadMasterPasswordMismatch) {
     setInputData("secret\nnosecret\n");
+    std::ostringstream dummy_output;
 
-    EXPECT_THROW(readMasterPassword(), std::runtime_error);
+    EXPECT_THROW(readMasterPassword(dummy_output), std::runtime_error);
 }

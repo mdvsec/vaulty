@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <stdexcept>
 #include <string_view>
 
@@ -10,8 +11,8 @@
 
 namespace vaulty::cli {
 
-SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho = true);
-SecureBuffer readMasterPassword();
+SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho = true, std::ostream& os = std::cout);
+SecureBuffer readMasterPassword(std::ostream& os = std::cout);
 
 /*
  * @class TerminalEchoGuard

@@ -1,14 +1,14 @@
-#include <iostream>
+#include <ostream>
 
 #include <input_utils.hpp>
 #include <logger.hpp>
 
 namespace vaulty::cli {
 
-SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
+SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho, std::ostream& os) {
     LOG_DEBUG("Prompting user for sensitive input: '{}'", prompt);
 
-    std::cout << prompt << std::flush;
+    os << prompt << std::flush;
 
     SecureBuffer buffer;
     size_t len = 0;
@@ -30,14 +30,14 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
             if (c == '\b' || c == 127) {
                 if (len > 0) {
                     --len;
-                    std::cout << "\b \b" << std::flush;
+                    os << "\b \b" << std::flush;
                 }
             } else {
                 buffer[len++] = c;
-                std::cout << '*' << std::flush;
+                os << '*' << std::flush;
             }
         }
-        std::cout << std::endl;
+        os << std::endl;
     } else {
         ssize_t bytes_read = read(STDIN_FILENO, buffer.data(), SecureBuffer::kMaxPasswordLength);
         if (bytes_read < 0) {
@@ -56,11 +56,11 @@ SecureBuffer readSensitiveInput(std::string_view prompt, bool noecho) {
     return buffer;
 }
 
-SecureBuffer readMasterPassword() {
+SecureBuffer readMasterPassword(std::ostream& os) {
     LOG_INFO("Requesting master password from user");
 
-    SecureBuffer master_password = readSensitiveInput("Enter master password: ");
-    SecureBuffer verification = readSensitiveInput("Confirm master password: ");
+    SecureBuffer master_password = readSensitiveInput("Enter master password: ", true, os);
+    SecureBuffer verification = readSensitiveInput("Confirm master password: ", true, os);
 
     if (master_password != verification) {
         throw std::runtime_error("Master password confirmation failed");
